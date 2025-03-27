@@ -1,0 +1,12 @@
+{
+  "name": "petstore",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "astro build",
+    "dev": "astro dev"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
