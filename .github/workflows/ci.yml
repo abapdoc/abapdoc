@@ -1,0 +1,54 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Cache npm and Nx
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            .nx/cache
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Install
+        run: npm ci --ignore-scripts
+
+      - name: Build
+        run: npm run build
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: End-to-end smoke build
+        run: npm run abapdoc build --src e2e/petstore --out dist/petstore-docs
+
+      - name: Upload generated docs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: petstore-docs
+          path: dist/petstore-docs
+          retention-days: 7

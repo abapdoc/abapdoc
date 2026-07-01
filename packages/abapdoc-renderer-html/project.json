@@ -1,0 +1,25 @@
+{
+  "name": "abapdoc-renderer-html",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/abapdoc-renderer-html/src",
+  "projectType": "library",
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc -p packages/abapdoc-renderer-html/tsconfig.lib.json --noEmit"
+      }
+    },
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": ["{workspaceRoot}/coverage/packages/abapdoc-renderer-html"],
+      "options": {
+        "configFile": "packages/abapdoc-renderer-html/vite.config.ts"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  },
+  "tags": ["scope:renderer"]
+}
