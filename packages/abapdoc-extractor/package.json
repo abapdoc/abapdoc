@@ -43,7 +43,7 @@
     "tslib": "^2.3.0",
     "@abapdoc/model": "*",
     "zod": "^3.25.76",
-    "fast-xml-parser": "*"
+    "fast-xml-parser": "^5.0.0"
   },
   "devDependencies": {
     "typescript": "~5.7.2",

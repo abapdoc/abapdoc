@@ -153,6 +153,13 @@ function parseClassDefinition(
   }
 
   let visibility: Visibility = 'public';
+  // The class's own visibility is the one declared at the top of the
+  // body (PUBLIC/PROTECTED/PRIVATE keyword line, before any SECTION
+  // header). SECTION headers inside the class body change the
+  // sub-scope for subsequent DATA/TYPES/METHODS but do NOT change
+  // the class's own visibility. We snapshot it when we hit the first
+  // SECTION header.
+  let classVisibility: Visibility | undefined;
   let superclass: string | undefined;
   const interfaces: string[] = [];
   const attributes: Attribute[] = [];
@@ -171,9 +178,28 @@ function parseClassDefinition(
     }
 
     // Visibility modifiers appear on their own lines.
-    // Skip `* SECTION.` lines — they designate sub-sections, not
-    // the class visibility itself. We match the trailing `SECTION`
-    // token before any terminating punctuation.
+    // Update visibility on explicit PUBLIC/PROTECTED/PRIVATE/PACKAGE
+    // SECTION headers (Cubic P0: the previous catch-all
+    // `/ SECTION[.\s]*$/u` test caught them first and skipped
+    // them without updating `visibility`, so attributes declared
+    // after PROTECTED SECTION inherited PUBLIC visibility).
+    if (upper === 'PUBLIC SECTION.' || upper === 'PUBLIC SECTION') {
+      // First SECTION line snapshots the class's own visibility.
+      if (classVisibility === undefined) classVisibility = 'public';
+      visibility = 'public';
+      continue;
+    }
+    if (upper === 'PROTECTED SECTION.' || upper === 'PROTECTED SECTION') {
+      if (classVisibility === undefined) classVisibility = visibility;
+      visibility = 'protected';
+      continue;
+    }
+    if (upper === 'PRIVATE SECTION.' || upper === 'PRIVATE SECTION') {
+      if (classVisibility === undefined) classVisibility = visibility;
+      visibility = 'private';
+      continue;
+    }
+    // Skip a stray `* SECTION.` style annotation (decorative).
     if (/ SECTION[.\s]*$/u.test(upper)) {
       continue;
     }
@@ -222,14 +248,18 @@ function parseClassDefinition(
     // previously continued without updating, which caused attributes
     // declared after a PROTECTED SECTION to inherit PUBLIC visibility.
     if (upper === 'PUBLIC SECTION.' || upper === 'PUBLIC SECTION') {
+      // First SECTION line snapshots the class's own visibility.
+      if (classVisibility === undefined) classVisibility = 'public';
       visibility = 'public';
       continue;
     }
     if (upper === 'PROTECTED SECTION.' || upper === 'PROTECTED SECTION') {
+      if (classVisibility === undefined) classVisibility = visibility;
       visibility = 'protected';
       continue;
     }
     if (upper === 'PRIVATE SECTION.' || upper === 'PRIVATE SECTION') {
+      if (classVisibility === undefined) classVisibility = visibility;
       visibility = 'private';
       continue;
     }
@@ -293,7 +323,10 @@ function parseClassDefinition(
   const cls: Class = {
     kind: 'class',
     name,
-    visibility,
+    // Use the class-level visibility (the one declared before any
+    // SECTION header). If for some reason no SECTION was seen,
+    // fall back to the last visibility in the body.
+    visibility: classVisibility ?? visibility,
     sourceLocation: { file: '', startLine: startIndex + 1, endLine },
   };
   if (superclass !== undefined) {

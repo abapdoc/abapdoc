@@ -1,90 +1,110 @@
 /**
- * Line cursor — a tiny helper around `readonly string[]` that exposes
- * peek/advance and remembers the 1-based line number of each access.
+ * Line-cursor helpers shared by all per-kind ABAP source parsers.
  *
- * Used by the source-level parsers to walk ABAP files without manual
- * index arithmetic.
+ * The parsers walk the source one 1-based line at a time, often
+ * looking at the immediately preceding or following line. These
+ * helpers keep that machinery in one place.
  */
 
-export interface LineCursor {
-  /** 0-based index of the next line to read. */
-  readonly index: number;
-  /** Number of lines in the source. */
-  readonly length: number;
-}
-
-/** Create a cursor positioned at line 0. */
-export function startCursor(length: number): LineCursor {
-  return { index: 0, length };
-}
-
-/** Returns true when there is at least one line remaining. */
-export function hasMore(c: LineCursor): boolean {
-  return c.index < c.length;
-}
-
-/** Peek the next line without advancing; returns undefined at EOF. */
-export function peek(lines: readonly string[], c: LineCursor): string | undefined {
-  if (c.index >= c.length) {
-    return undefined;
-  }
-  return lines[c.index];
-}
-
-/**
- * Peek the line N steps ahead of the cursor (0 = current line).
- * Returns undefined if the offset is past EOF.
- */
-export function peekAt(lines: readonly string[], c: LineCursor, offset: number): string | undefined {
-  const idx = c.index + offset;
-  if (idx < 0 || idx >= c.length) {
-    return undefined;
-  }
-  return lines[idx];
-}
-
-/** Read the next line and advance the cursor. */
-export function next(lines: readonly string[], c: LineCursor): { line: string; cursor: LineCursor } | undefined {
-  if (c.index >= c.length) {
-    return undefined;
-  }
-  return {
-    line: lines[c.index]!,
-    cursor: { index: c.index + 1, length: c.length },
-  };
-}
-
-/** Skip lines until the predicate returns true (or EOF). */
-export function skipUntil(
-  lines: readonly string[],
-  c: LineCursor,
-  predicate: (line: string) => boolean,
-): LineCursor {
-  let cur = c;
-  while (cur.index < cur.length) {
-    const line = lines[cur.index]!;
-    if (predicate(line)) {
-      return cur;
-    }
-    cur = { index: cur.index + 1, length: cur.length };
-  }
-  return cur;
-}
-
-/**
- * Compute the 1-based line number for a 0-based cursor index.
- */
-export function lineNumber(c: LineCursor): number {
-  return c.index + 1;
-}
+import type { DocBlock } from '@abapdoc/model';
 
 /**
  * Split a source string into lines, normalising CRLF to LF. The
  * resulting array is 0-indexed; callers convert to 1-based with
  * `index + 1`.
+ *
+ * Note: trailing newlines produce an empty trailing element in the
+ * returned array (because `String.prototype.split` keeps the empty
+ * string after the final separator). This is intentional — callers
+ * rely on 1-based line numbers matching the source file.
  */
 export function splitSource(source: string): string[] {
-  // Replace CR+LF with LF, then split. Keep trailing empty lines so
-  // 1-based line numbers match the original file.
-  return source.replace(/\r\n/g, '\n').split('\n');
+  // Replace CRLF with LF, then split on LF.
+  const normalised = source.replace(/\r\n/g, '\n');
+  const parts = normalised.split('\n');
+  // Guarantee at least one element so an empty input still yields [''],
+  // matching the 1-based indexing convention used elsewhere.
+  if (parts.length === 0) {
+    return [''];
+  }
+  return parts;
+}
+
+/**
+ * Strip a trailing ABAP line comment (`"…"` after code). Returns the
+ * input unchanged when no comment is present.
+ *
+ * Heuristic: if the trimmed line contains an even number of
+ * double-quote characters, there is no comment; if odd, the last
+ * unescaped `"…"` is a comment and we strip everything from that
+ * point onward.
+ */
+export function stripTrailingComment(line: string): string {
+  const trimmed = line.trimEnd();
+  // Cheap pre-check: if the line does NOT contain a `"` at all, it
+  // can't have an ABAP comment.
+  if (!trimmed.includes('"')) {
+    return line;
+  }
+  // Walk the string and count quote characters. ABAP comments start
+  // after the LAST whole-quote. We do NOT parse strings here — that
+  // would require full tokenisation — but the heuristic works for
+  // ABAP Doc lines and most class/interface bodies.
+  let lastCommentStart = -1;
+  for (let i = 0; i < trimmed.length; i++) {
+    if (trimmed[i] === '"') {
+      // Toggle: even count opens a comment, odd count closes it.
+      // The last unmatched `"` is the comment start.
+      if ((countQuotes(trimmed, i) % 2) === 1) {
+        lastCommentStart = i;
+      }
+    }
+  }
+  if (lastCommentStart < 0) {
+    return line;
+  }
+  return line.slice(0, lastCommentStart).trimEnd();
+}
+
+function countQuotes(s: string, upTo: number): number {
+  let n = 0;
+  for (let i = 0; i <= upTo; i++) {
+    if (s[i] === '"') {
+      n++;
+    }
+  }
+  return n;
+}
+
+/**
+ * Determine if `line` is an ABAP Doc line (`"!` prefix). The
+ * `!` is mandatory — `"` alone is a regular line comment.
+ */
+export function isAbapDocLine(line: string): boolean {
+  const trimmed = line.trimStart();
+  return trimmed.startsWith('"!') || trimmed.startsWith('"! ');
+}
+
+/** Strip the leading `"!` (and one optional space) from an ABAP Doc line. */
+export function stripDocPrefix(line: string): string {
+  const trimmed = line.trimStart();
+  if (trimmed.startsWith('"!')) {
+    return trimmed.slice(2);
+  }
+  if (trimmed.startsWith('"! ')) {
+    return trimmed.slice(3);
+  }
+  return trimmed;
+}
+
+/** Convenience: parse an ABAP Doc comment from a single line. */
+export function parseDocFromLine(line: string): DocBlock | undefined {
+  if (!isAbapDocLine(line)) {
+    return undefined;
+  }
+  return {
+    summary: stripDocPrefix(line),
+    tags: [],
+    sourceLocation: { file: '', startLine: 1, endLine: 1 },
+  };
 }

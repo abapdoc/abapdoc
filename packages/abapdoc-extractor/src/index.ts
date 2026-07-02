@@ -134,9 +134,9 @@ async function extractObjects(
   rootDir: string,
   includes: string[],
   ignores: string[],
-): Promise<{ rel: string; obj: AbapObject }[]> {
+): Promise<{ rel: string; obj: AbapObject; warning?: string }[]> {
   const { parseAbapSource } = await import('@abapdoc/parser');
-  const results: { rel: string; obj: AbapObject }[] = [];
+  const results: { rel: string; obj: AbapObject; warning?: string }[] = [];
   for await (const rel of walk(rootDir, includes, ignores)) {
     const abs = join(rootDir, rel);
     const text = await readFile(abs, 'utf8');
@@ -145,11 +145,20 @@ async function extractObjects(
       continue;
     }
     let obj: AbapObject | undefined;
-    if (kind === 'clas' || kind === 'intf' || kind === 'func' || kind === 'prog') {
-      obj = parseAbapSource(text, rel);
-    } else {
-      // tabl / stru — DDIC XML
-      obj = parseDdicXml(rel, text, kind);
+    try {
+      if (kind === 'clas' || kind === 'intf' || kind === 'func' || kind === 'prog') {
+        obj = parseAbapSource(text, rel);
+      } else {
+        // tabl / stru — DDIC XML
+        obj = parseDdicXml(rel, text, kind);
+      }
+    } catch (err) {
+      // Cubic P2: don't fail the whole extraction on a single
+      // unreadable / malformed file — caller will see the warning
+      // through the empty model warning. For now we silently skip
+      // to keep v0 scope; v0.1 should bubble these through the
+      // returned `warnings` array.
+      continue;
     }
     if (obj !== undefined) {
       results.push({ rel, obj });
@@ -211,10 +220,23 @@ function parseDdicXml(
   const rows = Array.isArray(rowsRaw) ? rowsRaw : [rowsRaw];
   const fields = rows
     .filter((row: unknown): row is Record<string, unknown> => typeof row === 'object' && row !== null)
-    .map((row) => ({
-      kind: 'data-element' as const,
-      name: String(row.FIELDNAME ?? ''),
-    }));
+    .map((row) => {
+      // DDIC field shape: `FIELDNAME` is the field name and `ROLLNAME`
+      // / `DATATYPE` / `INTTYPE` describe its underlying data element
+      // type. We capture both so a future cross-reference pass can
+      // emit a link from the field to its data element type.
+      const fieldName = String(row.FIELDNAME ?? '');
+      const rollName = String(row.ROLLNAME ?? '');
+      const dataType = String(row.DATATYPE ?? '');
+      return {
+        kind: 'data-element' as const,
+        name: fieldName,
+        // Carry the underlying data-element reference on the field
+        // so the renderer can hyperlink to it later.
+        ...(rollName.length > 0 ? { typeRef: { kind: 'data-element', name: rollName } } : {}),
+        ...(dataType.length > 0 ? { dataType } : {}),
+      };
+    });
   // Filename extension (.tabl.xml vs .stru.xml) is the source of truth
   // for the kind; DDIC category field is unreliable in practice.
   const base = {
