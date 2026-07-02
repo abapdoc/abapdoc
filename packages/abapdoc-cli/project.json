@@ -1,0 +1,35 @@
+{
+  "name": "abapdoc-cli",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/abapdoc-cli/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "command": "tsdown",
+      "options": {
+        "cwd": "packages/abapdoc-cli"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc -p packages/abapdoc-cli/tsconfig.lib.json --noEmit"
+      }
+    },
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": [
+        "{workspaceRoot}/coverage/packages/abapdoc-cli"
+      ],
+      "options": {
+        "configFile": "packages/abapdoc-cli/vite.config.ts"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  },
+  "tags": [
+    "scope:cli"
+  ]
+}

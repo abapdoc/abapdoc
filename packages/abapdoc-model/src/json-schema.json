@@ -1,0 +1,608 @@
+{
+  "$ref": "#/definitions/DocumentationModel",
+  "definitions": {
+    "DocumentationModel": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "const": "1.0.0"
+        },
+        "source": {
+          "type": "object",
+          "properties": {
+            "provider": {
+              "type": "string",
+              "minLength": 1
+            },
+            "rootDir": {
+              "type": "string",
+              "minLength": 1
+            },
+            "commit": {
+              "type": "string"
+            },
+            "generatedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "provider",
+            "rootDir"
+          ],
+          "additionalProperties": false
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "class"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "visibility": {
+                    "type": "string",
+                    "enum": [
+                      "public",
+                      "protected",
+                      "private",
+                      "package"
+                    ]
+                  },
+                  "superclass": {
+                    "type": "string"
+                  },
+                  "interfaces": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "types": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "visibility": {
+                          "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/visibility"
+                        },
+                        "type": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "typeRef": {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "ddic-table",
+                                "ddic-structure",
+                                "data-element",
+                                "builtin",
+                                "custom"
+                              ]
+                            },
+                            "name": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "fields": {
+                              "type": "array",
+                              "items": {
+                                "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/typeRef"
+                              }
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "doc": {
+                          "type": "object",
+                          "properties": {
+                            "summary": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "description": {
+                              "type": "string"
+                            },
+                            "tags": {
+                              "type": "array",
+                              "items": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "parameter"
+                                      },
+                                      "name": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "description": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "name",
+                                      "description"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "return"
+                                      },
+                                      "description": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "description"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "raising"
+                                      },
+                                      "name": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "description": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "name"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "see"
+                                      },
+                                      "target": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "target"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "const": "custom"
+                                      },
+                                      "name": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "body": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "name",
+                                      "body"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              }
+                            },
+                            "sourceLocation": {
+                              "type": "object",
+                              "properties": {
+                                "file": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "startLine": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0
+                                },
+                                "endLine": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0
+                                }
+                              },
+                              "required": [
+                                "file",
+                                "startLine",
+                                "endLine"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "summary",
+                            "tags",
+                            "sourceLocation"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "type"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "methods": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "parameters": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "direction": {
+                                "type": "string",
+                                "enum": [
+                                  "importing",
+                                  "exporting",
+                                  "changing",
+                                  "returning"
+                                ]
+                              },
+                              "type": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "typeRef": {
+                                "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/typeRef"
+                              },
+                              "doc": {
+                                "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "direction",
+                              "type"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "returning": {
+                          "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/methods/items/properties/parameters/items"
+                        },
+                        "exceptions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "sourceLocation": {
+                                "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc/properties/sourceLocation"
+                              }
+                            },
+                            "required": [
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "visibility": {
+                          "type": "string",
+                          "enum": [
+                            "public",
+                            "protected",
+                            "private"
+                          ]
+                        },
+                        "isInterfaceMethod": {
+                          "type": "boolean"
+                        },
+                        "doc": {
+                          "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc"
+                        },
+                        "sourceLocation": {
+                          "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc/properties/sourceLocation"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "parameters",
+                        "exceptions",
+                        "visibility",
+                        "sourceLocation"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "attributes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "visibility": {
+                          "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/visibility"
+                        },
+                        "type": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "typeRef": {
+                          "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/typeRef"
+                        },
+                        "isReadOnly": {
+                          "type": "boolean"
+                        },
+                        "isStatic": {
+                          "type": "boolean"
+                        },
+                        "doc": {
+                          "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "visibility",
+                        "type"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "doc": {
+                    "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc"
+                  },
+                  "sourceLocation": {
+                    "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc/properties/sourceLocation"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "name",
+                  "visibility",
+                  "sourceLocation"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "interface"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "types": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items"
+                    }
+                  },
+                  "methods": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/methods/items"
+                    }
+                  },
+                  "doc": {
+                    "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc"
+                  },
+                  "sourceLocation": {
+                    "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc/properties/sourceLocation"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "name",
+                  "sourceLocation"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "function-module"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "parameters": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/methods/items/properties/parameters/items"
+                    }
+                  },
+                  "exceptions": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/methods/items/properties/exceptions/items"
+                    }
+                  },
+                  "doc": {
+                    "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc"
+                  },
+                  "sourceLocation": {
+                    "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc/properties/sourceLocation"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "name",
+                  "parameters",
+                  "exceptions",
+                  "sourceLocation"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "program"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "programType": {
+                    "type": "string",
+                    "enum": [
+                      "executable",
+                      "module-pool",
+                      "include",
+                      "class-pool",
+                      "function-pool"
+                    ]
+                  },
+                  "doc": {
+                    "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc"
+                  },
+                  "sourceLocation": {
+                    "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc/properties/sourceLocation"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "name",
+                  "programType",
+                  "sourceLocation"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "table"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "fields": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/typeRef"
+                    }
+                  },
+                  "doc": {
+                    "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc"
+                  },
+                  "sourceLocation": {
+                    "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc/properties/sourceLocation"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "name",
+                  "fields",
+                  "sourceLocation"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "structure"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "fields": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/typeRef"
+                    }
+                  },
+                  "doc": {
+                    "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc"
+                  },
+                  "sourceLocation": {
+                    "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc/properties/sourceLocation"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "name",
+                  "fields",
+                  "sourceLocation"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "version",
+        "source",
+        "objects"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}
