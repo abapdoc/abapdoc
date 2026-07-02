@@ -1,0 +1,30 @@
+{
+  "name": "abapdoc-renderer-registry",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/abapdoc-renderer-registry/src",
+  "projectType": "library",
+  "targets": {
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": ["{projectRoot}/test-output/vitest/coverage"],
+      "options": {
+        "config": "packages/abapdoc-renderer-registry/vite.config.ts"
+      }
+    },
+    "build": {
+      "command": "npm run build",
+      "options": { "cwd": "packages/abapdoc-renderer-registry" },
+      "cache": true,
+      "outputs": ["{projectRoot}/dist"]
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc -p packages/abapdoc-renderer-registry/tsconfig.lib.json --noEmit"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}
