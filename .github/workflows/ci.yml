@@ -5,6 +5,12 @@ on:
   push:
     branches: [main]
 
+# Minimal permissions: only what's needed for checkout, cache and
+# artifact upload. (CodeRabbit Major: explicitly restrict the GITHUB_TOKEN
+# so the workflow cannot accidentally use repo write/admin scopes.)
+permissions:
+  contents: read
+
 jobs:
   build-test:
     runs-on: ubuntu-latest

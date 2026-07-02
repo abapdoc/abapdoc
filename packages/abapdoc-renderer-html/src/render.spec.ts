@@ -133,7 +133,7 @@ describe('@abapdoc/renderer-html', () => {
     const doc = parseHtml(page.content);
 
     const headerCells = [...doc.querySelectorAll('thead th')].map((th) => th.textContent?.trim());
-    expect(headerCells).toEqual(['Name', 'Kind', 'Reference']);
+    expect(headerCells).toEqual(['Name', 'Kind']);
     // Field names from the fixture.
     expect(doc.body.textContent).toContain('client');
     expect(doc.body.textContent).toContain('pet_id');

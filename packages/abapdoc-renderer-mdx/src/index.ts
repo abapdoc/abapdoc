@@ -254,13 +254,35 @@ function renderMethod(method: Method): string {
   const parts: string[] = [];
   parts.push(`### ${method.name} _(${method.visibility})_`);
 
-  if (method.doc) parts.push(renderDocBlock(method.doc));
+  // If the method has a `returning` parameter, the structured doc
+  // already shows its type via the Returns blockquote below. Render
+  // the method's DocBlock WITHOUT @return tags to avoid producing
+  // two duplicate Returns sections (CodeRabbit Major).
+  if (method.doc !== undefined) {
+    const tagsForBody = method.returning !== undefined
+      ? method.doc.tags.filter((t) => t.kind !== 'return')
+      : method.doc.tags;
+    parts.push(renderDocBlockWithTags(method.doc, tagsForBody));
+  }
   if (method.parameters.length > 0) parts.push(renderParametersTable(method.parameters));
   if (method.returning) {
     parts.push(`> **Returns** \`${escapeMarkdown(method.returning.type)}\`${method.returning.doc ? ` — ${escapeMarkdown(renderDocBlockInline(method.returning.doc))}` : ''}`);
   }
   if (method.exceptions.length > 0) parts.push(renderExceptionsList(method.exceptions));
 
+  return parts.join('\n\n');
+}
+
+/** Render a DocBlock using an explicit tag list (used to filter redundant @return). */
+function renderDocBlockWithTags(doc: DocBlock, tags: readonly Tag[]): string {
+  const parts: string[] = [];
+  parts.push(escapeMdxBody(doc.summary));
+  if (doc.description) {
+    parts.push(escapeMdxBody(doc.description));
+  }
+  for (const tag of tags) {
+    parts.push(renderTag(tag));
+  }
   return parts.join('\n\n');
 }
 

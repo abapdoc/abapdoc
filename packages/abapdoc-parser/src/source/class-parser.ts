@@ -217,6 +217,22 @@ function parseClassDefinition(
     }
 
     // SECTION header lines (PUBLIC SECTION. / PROTECTED SECTION. / …).
+    // These DO update the current visibility for subsequent DATA / TYPES /
+    // METHODS declarations — CodeRabbit CRITICAL: section headers
+    // previously continued without updating, which caused attributes
+    // declared after a PROTECTED SECTION to inherit PUBLIC visibility.
+    if (upper === 'PUBLIC SECTION.' || upper === 'PUBLIC SECTION') {
+      visibility = 'public';
+      continue;
+    }
+    if (upper === 'PROTECTED SECTION.' || upper === 'PROTECTED SECTION') {
+      visibility = 'protected';
+      continue;
+    }
+    if (upper === 'PRIVATE SECTION.' || upper === 'PRIVATE SECTION') {
+      visibility = 'private';
+      continue;
+    }
     if (upper.includes(' SECTION')) {
       continue;
     }

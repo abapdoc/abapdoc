@@ -360,7 +360,14 @@ function renderMethodSection(method: Method): string {
   const heading = `<h3><code>${escapeHtml(method.name)}</code> ${badge}</h3>`;
 
   const parts: string[] = [heading];
-  parts.push(renderDocBlock(method.doc));
+  // If the method has a `returning` parameter, the structured doc
+  // already shows it via the Returns callout below. Strip @return
+  // tags from the body to avoid a duplicate Returns section.
+  if (method.doc !== undefined && method.returning !== undefined) {
+    parts.push(renderDocBlockFiltered(method.doc, (t) => t.kind !== 'return'));
+  } else {
+    parts.push(renderDocBlock(method.doc));
+  }
 
   if (method.parameters.length > 0) parts.push(renderParametersTable(method.parameters));
   if (method.returning) {
@@ -402,15 +409,19 @@ function renderExceptionsList(exs: readonly { name: string }[]): string {
 function renderFieldsTable(fields: readonly TypeRef[]): string {
   const rows = fields
     .map(
+      // Fields table: shows each field's name and its kind
+      // (data-element / ddic-table / ddic-structure / builtin / custom).
+      // We intentionally do NOT show a separate "Reference" column —
+      // the field's name IS the reference target; showing it twice
+      // was a copy/paste bug.
       (f) =>
         `<tr><td><code>${escapeHtml(f.name)}</code></td>` +
-        `<td>${escapeHtml(f.kind)}</td>` +
-        `<td><code>${escapeHtml(f.name)}</code></td></tr>`,
+        `<td>${escapeHtml(f.kind)}</td></tr>`,
     )
     .join('');
   return `
 <table>
-<thead><tr><th>Name</th><th>Kind</th><th>Reference</th></tr></thead>
+<thead><tr><th>Name</th><th>Kind</th></tr></thead>
 <tbody>${rows}</tbody>
 </table>
 `.trim();
@@ -429,6 +440,21 @@ function renderFieldsTable(fields: readonly TypeRef[]): string {
  * Recursive in spirit: nested DocBlocks (e.g. a parameter DocBlock) are
  * rendered through {@link renderDocBlockText}, which yields just inline text.
  */
+/** Render a DocBlock, optionally filtering tags out via `tagFilter`. */
+function renderDocBlockFiltered(doc: DocBlock | undefined, tagFilter: (t: Tag) => boolean): string {
+  if (doc === undefined) return '';
+  const parts: string[] = [];
+  parts.push(`<p class="lead">${escapeHtml(doc.summary)}</p>`);
+  if (doc.description) {
+    parts.push(`<p>${escapeHtml(doc.description)}</p>`);
+  }
+  for (const tag of doc.tags) {
+    if (!tagFilter(tag)) continue;
+    parts.push(renderTag(tag));
+  }
+  return parts.join('\n');
+}
+
 export function renderDocBlock(doc: DocBlock | undefined): string {
   if (!doc) return '';
   const parts: string[] = [];

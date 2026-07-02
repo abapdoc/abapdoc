@@ -69,6 +69,10 @@ export function parseFunctionModule(lines: readonly string[]): FunctionModulePar
   // ABAP statements (rarely used).
   const parameters: Parameter[] = [];
   const exceptions: ExceptionRef[] = [];
+  // Track the current section so parameter lines below IMPORTING /
+  // EXPORTING / CHANGING / TABLES inherit the right direction.
+  // (CodeRabbit Major + Cubic P1: was hardcoded to 'importing'.)
+  let currentDirection: Parameter['direction'] | undefined;
 
   let i = startIndex + 1;
   for (; i < lines.length; i++) {
@@ -82,7 +86,15 @@ export function parseFunctionModule(lines: readonly string[]): FunctionModulePar
 
     // Detect `"*` interface lines.
     if (raw.trimStart().startsWith('*"')) {
-      const parsed = parseInterfaceLine(raw);
+      // Strip the leading `"*` (legacy SAP interface line marker).
+      const clean = raw.replace(/^\s*\*"/u, '').trim();
+      // Update current section based on a section header keyword.
+      const sectionUpper = clean.trim().toUpperCase();
+      if (sectionUpper === 'IMPORTING') currentDirection = 'importing';
+      else if (sectionUpper === 'EXPORTING') currentDirection = 'exporting';
+      else if (sectionUpper === 'CHANGING') currentDirection = 'changing';
+      else if (sectionUpper === 'TABLES') currentDirection = 'changing';
+      const parsed = parseInterfaceLine(clean, currentDirection);
       if (parsed !== undefined) {
         if (parsed.kind === 'parameter') {
           parameters.push(parsed.parameter);
@@ -130,13 +142,17 @@ type InterfaceLineResult =
  *   *"  EXCEPTIONS
  *   *"     NOT_FOUND
  */
-function parseInterfaceLine(raw: string): InterfaceLineResult | undefined {
+function parseInterfaceLine(
+  raw: string,
+  currentDirection: Parameter['direction'] | undefined,
+): InterfaceLineResult | undefined {
   const trimmed = raw.replace(/^\s*\*/u, '').trim();
   if (trimmed.length === 0) {
     return undefined;
   }
   // Section header line: `IMPORTING` / `EXPORTING` / `EXCEPTIONS` /
-  // `TABLES` etc. — no value, just the keyword.
+  // `TABLES` etc. — no value, just the keyword. The caller updates
+  // its `currentDirection` based on this header.
   const upper = trimmed.toUpperCase();
   if (upper === 'IMPORTING' || upper === 'EXPORTING' || upper === 'CHANGING' ||
       upper === 'TABLES' || upper === 'EXCEPTIONS' || upper === 'LOCAL INTERFACE' ||
@@ -153,9 +169,12 @@ function parseInterfaceLine(raw: string): InterfaceLineResult | undefined {
   const first = tokens[0] ?? '';
   const typeIdx = tokens.findIndex((t, idx) => idx > 0 && t.toUpperCase() === 'TYPE');
   if (typeIdx !== -1 && typeIdx + 1 < tokens.length) {
+    // Fall back to 'importing' if no section has been seen yet (e.g.
+    // a parameter declared before any section header). This matches
+    // the legacy SAP behaviour where the implicit default is IMPORTING.
     const param: Parameter = {
       name: first,
-      direction: 'importing',
+      direction: currentDirection ?? 'importing',
       type: tokens.slice(typeIdx + 1).join(' '),
     };
     return { kind: 'parameter', parameter: param };

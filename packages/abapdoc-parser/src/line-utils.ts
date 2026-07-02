@@ -140,7 +140,15 @@ export function tokenizeStatement(line: string): string[] {
   let current = '';
   for (let i = 0; i < line.length; i++) {
     const ch = line[i]!;
-    if (ch === ' ' || ch === '\t' || ch === '.' || ch === ',' || ch === ':') {
+    // Split on whitespace AND on parens so `VALUE(rs_pet)` becomes
+    // ['VALUE', '(', 'rs_pet', ')']. This makes the VALUE-wrapper
+    // extraction in class/interface parsers robust to the common
+    // ABAP form where the name is glued to its delimiters.
+    if (
+      ch === ' ' || ch === '\t' ||
+      ch === '.' || ch === ',' || ch === ':' ||
+      ch === '(' || ch === ')'
+    ) {
       if (current.length > 0) {
         tokens.push(current);
         current = '';
