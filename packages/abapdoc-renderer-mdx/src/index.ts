@@ -36,6 +36,7 @@ import type {
   TypeRef,
 } from '@abapdoc/model';
 import { DocumentationModelSchema } from '@abapdoc/model';
+import { registerRenderer } from '@abapdoc/renderer-registry';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -76,6 +77,16 @@ export function render(
     })),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Registry self-registration
+// ---------------------------------------------------------------------------
+
+// Register this renderer with the format registry on module import.
+// The CLI looks renderers up via `getRenderer('mdx')` instead of
+// importing `render` directly, so this side-effect is what makes
+// the renderer discoverable.
+registerRenderer({ format: 'mdx', render });
 
 // ---------------------------------------------------------------------------
 // File-path helpers

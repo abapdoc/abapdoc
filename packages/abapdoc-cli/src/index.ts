@@ -7,9 +7,11 @@
  *   abapdoc validate --src <dir>
  *   abapdoc --version
  *
- * The CLI is intentionally tiny: it orchestrates the extractor and the
- * three renderers and writes their outputs to disk. All the interesting
- * work lives in the underlying packages.
+ * The CLI is intentionally tiny: it orchestrates the extractor, looks
+ * up the appropriate renderer via the {@link @abapdoc/renderer-registry}
+ * registry, and writes the resulting files to disk. Renderers
+ * self-register on import; the CLI does not hard-code a list of
+ * formats.
  */
 
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -20,16 +22,28 @@ import type { DocumentationModel } from '@abapdoc/model';
 import { DocumentationModelSchema } from '@abapdoc/model';
 
 import { extract } from '@abapdoc/extractor';
-import { render as renderJson } from '@abapdoc/renderer-json';
-import { render as renderHtml } from '@abapdoc/renderer-html';
-import { render as renderMdx } from '@abapdoc/renderer-mdx';
+import { getRenderer, listRenderers } from '@abapdoc/renderer-registry';
+// Side-effect imports — each of these modules calls `registerRenderer`
+// on import, populating the registry the CLI dispatches against.
+// Removing these imports would break the build because the registry
+// would be empty at run time.
+import '@abapdoc/renderer-json';
+import '@abapdoc/renderer-html';
+import '@abapdoc/renderer-mdx';
 
 type Format = 'html' | 'mdx' | 'json' | 'all';
 
+/** The list of formats the CLI accepts. Includes the synthetic `all`. */
 const FORMATS: readonly Format[] = ['html', 'mdx', 'json', 'all'];
 
+/**
+ * Validate the `--format` value. Accepts any format registered in the
+ * renderer registry, plus the synthetic `all` keyword (which expands
+ * to every registered format at build time).
+ */
 function validateFormat(format: string): format is Format {
-  return (FORMATS as readonly string[]).includes(format);
+  if (format === 'all') return true;
+  return listRenderers().some((r) => r.format === format);
 }
 
 async function runBuild(src: string, outDir: string, format: Format): Promise<number> {
@@ -37,7 +51,10 @@ async function runBuild(src: string, outDir: string, format: Format): Promise<nu
   // Validate the model end-to-end before rendering. Surface a clear
   // error if the upstream extractor emits something the schema rejects.
   const reparsed = DocumentationModelSchema.parse(JSON.parse(JSON.stringify(model)));
-  const formats = format === 'all' ? (['html', 'mdx', 'json'] as const) : ([format] as const);
+  // `all` expands to whatever the registry currently knows about. New
+  // formats register themselves; this loop picks them up automatically.
+  const formats: readonly string[] =
+    format === 'all' ? listRenderers().map((r) => r.format) : [format];
   await mkdir(outDir, { recursive: true });
 
   // Resolve outDir to an absolute, canonicalised base once. Every
@@ -47,10 +64,14 @@ async function runBuild(src: string, outDir: string, format: Format): Promise<nu
   const baseOut = resolve(outDir);
   let totalFiles = 0;
   for (const fmt of formats) {
-    const result =
-      fmt === 'json' ? renderJson(reparsed)
-      : fmt === 'html' ? renderHtml(reparsed)
-      : renderMdx(reparsed);
+    const renderer = getRenderer(fmt);
+    if (renderer === undefined) {
+      throw new Error(
+        `No renderer registered for format ${JSON.stringify(fmt)}. ` +
+          `Registered formats: ${listRenderers().map((r) => r.format).join(', ')}`,
+      );
+    }
+    const result = renderer.render(reparsed);
     for (const f of result.files) {
       // Reject '..' segments and absolute paths up-front.
       const segments = f.path.split(posix.sep);
@@ -136,7 +157,8 @@ function main(argv: readonly string[]): Promise<number> {
     .option('--format <fmt>', `output format (one of ${FORMATS.join(', ')})`, 'all')
     .action(async (opts: { src: string; out: string; format: string }) => {
       if (!validateFormat(opts.format)) {
-        console.error(`Invalid --format: ${opts.format}. Must be one of ${FORMATS.join(', ')}.`);
+        const available = [...listRenderers().map((r) => r.format), 'all'];
+        console.error(`Invalid --format: ${opts.format}. Must be one of ${available.join(', ')}.`);
         process.exit(1);
       }
       try {

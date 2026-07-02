@@ -4,18 +4,23 @@
   "sourceRoot": "packages/abapdoc-renderer-registry/src",
   "projectType": "library",
   "targets": {
-    "test": {
-      "executor": "@nx/vite:test",
-      "outputs": ["{projectRoot}/test-output/vitest/coverage"],
-      "options": {
-        "config": "packages/abapdoc-renderer-registry/vite.config.ts"
-      }
-    },
     "build": {
-      "command": "npm run build",
-      "options": { "cwd": "packages/abapdoc-renderer-registry" },
-      "cache": true,
-      "outputs": ["{projectRoot}/dist"]
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "packages/abapdoc-renderer-registry/dist",
+        "main": "packages/abapdoc-renderer-registry/src/index.ts",
+        "tsConfig": "packages/abapdoc-renderer-registry/tsconfig.lib.json",
+        "rootDir": "packages/abapdoc-renderer-registry/src",
+        "generatePackageJson": false,
+        "assets": [
+          {
+            "input": "./packages/abapdoc-renderer-registry/src",
+            "glob": "**/*.d.ts",
+            "output": "."
+          }
+        ]
+      }
     },
     "typecheck": {
       "executor": "nx:run-commands",
@@ -23,8 +28,16 @@
         "command": "tsc -p packages/abapdoc-renderer-registry/tsconfig.lib.json --noEmit"
       }
     },
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": ["{workspaceRoot}/coverage/packages/abapdoc-renderer-registry"],
+      "options": {
+        "configFile": "packages/abapdoc-renderer-registry/vite.config.ts"
+      }
+    },
     "lint": {
       "executor": "@nx/eslint:lint"
     }
-  }
+  },
+  "tags": ["scope:renderer"]
 }

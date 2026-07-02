@@ -36,6 +36,7 @@
     "@abapdoc/renderer-html": "*",
     "@abapdoc/renderer-mdx": "*",
     "@abapdoc/renderer-json": "*",
+    "@abapdoc/renderer-registry": "*",
     "commander": "*"
   },
   "devDependencies": {

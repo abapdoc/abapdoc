@@ -21,6 +21,9 @@
       "path": "../abapdoc-renderer-html/tsconfig.lib.json"
     },
     {
+      "path": "../abapdoc-renderer-registry/tsconfig.lib.json"
+    },
+    {
       "path": "../abapdoc-parser/tsconfig.lib.json"
     },
     {
