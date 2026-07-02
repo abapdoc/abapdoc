@@ -1,73 +1,30 @@
-/**
- * @abapdoc/extractor — file-based ABAP source extractor.
- *
- * Walks an abapGit-style repository on disk, picks up `.clas.abap`,
- * `.intf.abap`, `.func.abap`, `.tabl.abap`, `.struc.abap`, `.tabl.xml`,
- * `.struc.xml` files, runs each through the parser, and assembles a
- * single {@link DocumentationModel}.
- *
- * The extractor itself is deliberately small — it delegates parsing
- * to `@abapdoc/parser` and rendering to `@abapdoc/renderer-*`. The
- * `extract()` entry point is the only thing downstream tooling (the
- * CLI, CI integrations, future ADT connectors) needs to import.
- *
- * Out of scope for v0 (see ARCHITECTURE.md → "Out of scope"):
- *   - ADT / AST-based extraction (file-only for now)
- *   - Incremental extraction (always a full rebuild)
- *   - Cross-object link resolution beyond simple name match
- */
-
-import { readFile, readdir, stat } from 'node:fs/promises';
-import { join, relative, sep, posix, dirname } from 'node:path';
-
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { basename, join, posix, relative, sep } from 'node:path';
 import { XMLParser } from 'fast-xml-parser';
-import type { AbapObject, DocumentationModel } from '@abapdoc/model';
-
-import { parseAbapSource } from '@abapdoc/parser';
-
-export interface ExtractOptions {
-  /** abapGit-style repo root. */
-  rootDir: string;
-  /** Override the default include globs. */
-  include?: string[];
-  /** Additional excludes beyond `.abapgit.xml`. */
-  exclude?: string[];
-}
-
-export interface SourceInfo {
-  provider: 'file' | 'adt' | 'ast';
-  rootDir: string;
-  commit?: string;
-  generatedAt: string;
-}
-
-export interface ExtractResult {
-  model: DocumentationModel;
-  source: SourceInfo;
-}
+import type { AbapObject, DocBlock } from '@abapdoc/model';
+import { DocumentationModelSchema, DOCUMENTATION_MODEL_VERSION, type DocumentationModel } from '@abapdoc/model';
 
 /** Default include patterns: the file extensions we recognise as ABAP. */
-const DEFAULT_INCLUDES = [
+const DEFAULT_INCLUDES: string[] = [
   '*.clas.abap',
   '*.intf.abap',
-  '*.fugr.*.abap',
   '*.func.abap',
   '*.prog.abap',
-  '*.report.abap',
-  '*.tabl.abap',
-  '*.struc.abap',
   '*.tabl.xml',
-  '*.struc.xml',
+  '*.stru.xml',
 ];
 
 /** Read the `.abapgit.xml` `<IGNORE>` list (best-effort, tolerant). */
 async function readAbapGitIgnores(rootDir: string): Promise<string[]> {
   try {
     const raw = await readFile(join(rootDir, '.abapgit.xml'), 'utf8');
+    // XML hardening: disable entity expansion (CWE-611 / XXE). abapGit
+    // config XML does not need DTD/entity processing.
     const parser = new XMLParser({
       ignoreAttributes: false,
       attributeNamePrefix: '',
       parseAttributeValue: false,
+      processEntities: false,
     });
     const parsed = parser.parse(raw);
     const items: unknown = parsed?.['asx:abap']?.['asx:values']?.DATA?.IGNORE?.item;
@@ -101,6 +58,10 @@ function matchGlob(pattern: string, value: string): boolean {
   }
   // Convert glob to a simple regex. `**` matches any depth including `/`;
   // `*` matches anything within a single segment (no `/`).
+  //
+  // We escape every regex metacharacter, including `[`. `[` is technically
+  // a literal inside a character class in JS, but escaping it removes a
+  // common source of confusion when reading the pattern.
   const re = new RegExp(
     '^' +
       pattern
@@ -125,143 +86,118 @@ function matchesIncludes(name: string, relPosix: string, includes: string[]): bo
   });
 }
 
-// TEMP DEBUG
-(globalThis as { __debug_extractor?: unknown }).__debug_extractor = { matchesIncludes, matchGlob, DEFAULT_INCLUDES };
-
 /** Recursively walk rootDir and yield files matching any include pattern. */
 async function* walk(
   rootDir: string,
   includes: string[],
-  excludes: string[],
+  ignores: string[],
 ): AsyncGenerator<string> {
-  const stack: string[] = [''];
-  while (stack.length > 0) {
-    const rel = stack.pop()!;
-    const abs = join(rootDir, rel);
-    let entries;
-    try {
-      entries = await readdir(abs, { withFileTypes: true });
-    } catch {
-      continue;
-    }
-    for (const e of entries) {
-      const childRel = rel === '' ? e.name : rel + sep + e.name;
-      const childRelPosix = childRel.split(sep).join(posix.sep);
-      // eslint-disable-next-line no-console
-      
-      if (e.isDirectory()) {
-        if (!isIgnored(childRelPosix + '/', excludes)) {
-          stack.push(childRel);
+  // BFS via manual queue; we only yield matching files (not directories).
+  const queue: string[] = [rootDir];
+  while (queue.length > 0) {
+    const dir = queue.shift() as string;
+    const { readdir } = await import('node:fs/promises');
+    const entries = await readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const abs = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        queue.push(abs);
+      } else if (entry.isFile()) {
+        const name = entry.name;
+        const rel = relative(rootDir, abs);
+        const relPosix = rel.split(sep).join(posix.sep);
+        if (matchesIncludes(name, relPosix, includes) && !isIgnored(relPosix, ignores)) {
+          yield relPosix;
         }
-        continue;
-      }
-      if (isIgnored(childRelPosix, excludes)) {
-        continue;
-      }
-      const matches = matchesIncludes(e.name, childRelPosix, includes);
-      // eslint-disable-next-line no-console
-      // debug logging removed
-      if (matches) {
-        yield join(abs, e.name);
       }
     }
   }
 }
 
-/** Decide which file kind a given absolute path represents. */
-function classify(path: string, hasAbapContent: boolean): 'abap' | 'xml' {
-  if (path.endsWith('.xml')) return 'xml';
-  if (path.endsWith('.abap') && hasAbapContent) return 'abap';
-  // Default: try as ABAP source; the parser will fall back to a stub Structure.
-  return 'abap';
+/** Source path → file kind → SourceFile. */
+type FileKind = 'clas' | 'intf' | 'func' | 'prog' | 'tabl' | 'stru';
+
+function classify(relPosix: string): FileKind | undefined {
+  const m = /.*\.([a-z]+)\.(abap|xml)$/u.exec(basename(relPosix));
+  if (m === null) {
+    return undefined;
+  }
+  const kind = m[1];
+  if (kind === 'clas' || kind === 'intf' || kind === 'func' || kind === 'prog' || kind === 'tabl' || kind === 'stru') {
+    return kind;
+  }
+  return undefined;
 }
 
-/** Extract a `DocumentationModel` from a repo on disk. */
-export async function extract(options: ExtractOptions): Promise<ExtractResult> {
-  const { rootDir } = options;
-  const includes = options.include ?? DEFAULT_INCLUDES;
-  const excludes = [
-    ...(await readAbapGitIgnores(rootDir)),
-    ...(options.exclude ?? []),
-  ];
-  // The root itself must exist; stat throws if not.
-  await stat(rootDir);
-
-  const objects: AbapObject[] = [];
-  // eslint-disable-next-line no-console
-  
-
-  for await (const absPath of walk(rootDir, includes, excludes)) {
-    // eslint-disable-next-line no-console
-    
-    const relPosix = relative(rootDir, absPath).split(sep).join(posix.sep);
-    // Skip directories that the walker might surface (defensive — the
-    // walker filters dirs but symlinks or weird fs states can fool it).
-    let isDir = false;
-    try {
-      const s = await stat(absPath);
-      isDir = s.isDirectory();
-    } catch {
+/** Walk + parse all matching files into an array of AbapObject. */
+async function extractObjects(
+  rootDir: string,
+  includes: string[],
+  ignores: string[],
+): Promise<{ rel: string; obj: AbapObject }[]> {
+  const { parseAbapSource } = await import('@abapdoc/parser');
+  const results: { rel: string; obj: AbapObject }[] = [];
+  for await (const rel of walk(rootDir, includes, ignores)) {
+    const abs = join(rootDir, rel);
+    const text = await readFile(abs, 'utf8');
+    const kind = classify(rel);
+    if (kind === undefined) {
       continue;
     }
-    if (isDir) continue;
-    try {
-      const raw = await readFile(absPath, 'utf8');
-      const kind = classify(absPath, raw.trim().length > 0);
-      if (kind === 'xml') {
-        // DDIC XML — convert to a Structure/Table via parser's fallback path.
-        // The parser currently handles ABAP source only; for v0 we treat
-        // DDIC XML as a synthetic Structure whose fields reflect the
-        // <DD03P> rows. We construct it directly to keep the model schema.
-        const obj = parseDdicXml(relPosix, raw);
-        if (obj !== undefined) objects.push(obj);
-      } else {
-        const obj = parseAbapSource(raw, relPosix);
-        objects.push(obj);
-      }
-    } catch (err) {
-      // Per-file failures should not abort the whole extraction.
-      // Surface a minimal placeholder so downstream renderers still see the file.
-      const msg = err instanceof Error ? err.message : String(err);
-      objects.push({
-        kind: 'structure',
-        name: relPosix.split('/').pop() ?? relPosix,
-        fields: [],
-        sourceLocation: { file: relPosix, startLine: 1, endLine: 1 },
-      });
-      // eslint-disable-next-line no-console
-      console.warn(`abapdoc: failed to parse ${relPosix}: ${msg}`);
+    let obj: AbapObject | undefined;
+    if (kind === 'clas' || kind === 'intf' || kind === 'func' || kind === 'prog') {
+      obj = parseAbapSource(text, rel);
+    } else {
+      // tabl / stru — DDIC XML
+      obj = parseDdicXml(rel, text, kind);
+    }
+    if (obj !== undefined) {
+      results.push({ rel, obj });
     }
   }
-
-  const source: SourceInfo = {
-    provider: 'file',
-    rootDir,
-    generatedAt: new Date().toISOString(),
-  };
-  const model: DocumentationModel = {
-    version: '1.0.0',
-    source,
-    objects,
-  };
-  return { model, source };
+  return results;
 }
 
 /**
- * Parse a DDIC XML table/structure (`*.tabl.xml` / `*.struc.xml`)
- * into a Structure AbapObject. Field types come from `<DD03P>` rows;
- * ROLLNAME references are kept as `data-element` TypeRefs (no
- * further resolution — the renderer can hyperlink them later).
+ * Parse a DDIC table/structure XML (abapGit `<asx:abap>` format).
+ *
+ * The shape produced by abapGit's DDIC serializer is:
+ *
+ * ```xml
+ * <abapGit>
+ *   <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+ *     <asx:values>
+ *       <DD02V>…</DD02V>
+ *       <DD03P_TABLE>
+ *         <DD03P>…</DD03P> …
+ *       </DD03P_TABLE>
+ *     </asx:values>
+ *   </asx:abap>
+ * </abapGit>
+ * ```
+ *
+ * fast-xml-parser keeps the `asx:` prefix on element names; the
+ * top-level `<abapGit>` wrapper contains an `<asx:abap>` child.
  */
-function parseDdicXml(relPosix: string, xml: string): AbapObject | undefined {
+function parseDdicXml(
+  relPosix: string,
+  xml: string,
+  kind: 'tabl' | 'stru',
+): AbapObject | undefined {
+  // Map the filename-extension kind to the AbapObject discriminator.
+  const objectKind: 'table' | 'structure' = kind === 'tabl' ? 'table' : 'structure';
+  // XML hardening: disable entity expansion (CWE-611 / XXE). abapGit
+  // DDIC XML is generated by SAP tooling and does not need DTD/entity
+  // processing.
   const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: '',
     parseAttributeValue: false,
+    processEntities: false,
   });
   const parsed = parser.parse(xml);
   // fast-xml-parser keeps the `asx:` prefix on element names; the
-  // top-level <abapGit> wrapper contains an <asx:abap> child.
+  // top-level `<abapGit>` wrapper contains an `<asx:abap>` child.
   const abapGit = parsed?.abapGit;
   const asxAbap = abapGit?.['asx:abap'];
   const values = asxAbap?.['asx:values'];
@@ -269,32 +205,71 @@ function parseDdicXml(relPosix: string, xml: string): AbapObject | undefined {
     return undefined;
   }
   const dd02v = values.DD02V;
-  const tableName = String(dd02v?.TABNAME ?? relPosix.replace(/\.[^.]+$/u, ''));
+  const objectName = String(dd02v?.TABNAME ?? relPosix.replace(/\.[^.]+$/u, ''));
   const description = String(dd02v?.DDTEXT ?? '');
-  const rows = values.DD03P_TABLE?.DD03P ?? [];
-  const fields = (Array.isArray(rows) ? rows : [rows]).map((row: Record<string, unknown>) => ({
-    kind: 'data-element' as const,
-    name: String(row.FIELDNAME ?? ''),
-  }));
-  const obj: AbapObject = {
-    kind: 'table',
-    name: tableName,
+  const rowsRaw = values.DD03P_TABLE?.DD03P ?? [];
+  const rows = Array.isArray(rowsRaw) ? rowsRaw : [rowsRaw];
+  const fields = rows
+    .filter((row: unknown): row is Record<string, unknown> => typeof row === 'object' && row !== null)
+    .map((row) => ({
+      kind: 'data-element' as const,
+      name: String(row.FIELDNAME ?? ''),
+    }));
+  // Filename extension (.tabl.xml vs .stru.xml) is the source of truth
+  // for the kind; DDIC category field is unreliable in practice.
+  const base = {
+    kind: objectKind,
+    name: objectName,
     fields,
     sourceLocation: { file: relPosix, startLine: 1, endLine: 1 },
-  };
+  } as AbapObject;
   if (description.length > 0) {
-    obj.doc = {
+    (base as { doc?: DocBlock }).doc = {
       summary: description,
       description: undefined,
       tags: [],
       sourceLocation: { file: relPosix, startLine: 1, endLine: 1 },
     };
   }
-  return obj;
+  return base;
 }
 
-// Re-export useful types so consumers only need this single entry point.
-export type { AbapObject, DocumentationModel };
+/** Extract a DocumentationModel from an abapGit-style root directory. */
+export async function extract(opts: {
+  rootDir: string;
+  includes?: string[];
+}): Promise<{ model: DocumentationModel; warnings: string[] }> {
+  const rootDir = opts.rootDir;
+  const includes = opts.includes ?? DEFAULT_INCLUDES;
+  const warnings: string[] = [];
+  const ignores = await readAbapGitIgnores(rootDir);
+  const extracted: { rel: string; obj: AbapObject }[] = await extractObjects(rootDir, includes, ignores);
+  if (extracted.length === 0) {
+    warnings.push(`No matching ABAP files found under ${rootDir} (includes: ${includes.join(', ')})`);
+  }
+  const objects: AbapObject[] = extracted.map((e) => e.obj);
+  const model = {
+    version: DOCUMENTATION_MODEL_VERSION,
+    source: {
+      provider: 'file',
+      rootDir,
+      generatedAt: new Date().toISOString(),
+    },
+    objects,
+  };
+  // Validate before returning so the caller gets a clean model or a clear error.
+  const validated = DocumentationModelSchema.parse(model) as DocumentationModel;
+  return { model: validated, warnings };
+}
 
-// Note: dirname import retained for callers that might use it via re-export.
-void dirname;
+/** Convenience: extract + write `model.json` next to rendered docs. */
+export async function extractAndWrite(opts: {
+  rootDir: string;
+  outDir: string;
+  includes?: string[];
+}): Promise<{ model: DocumentationModel; warnings: string[] }> {
+  const { model, warnings } = await extract(opts);
+  await mkdir(opts.outDir, { recursive: true });
+  await writeFile(join(opts.outDir, 'model.json'), JSON.stringify(model, null, 2));
+  return { model, warnings };
+}
