@@ -107,14 +107,17 @@ describe('@abapdoc/renderer-mdx', () => {
     expect(page.content).toContain('`zpet_name`');
   });
 
-  it('preserves the literal <script> payload in descriptions (MDX is not HTML)', () => {
+  it('escapes HTML/JSX-significant chars in descriptions (XSS-safe MDX)', () => {
     const { files } = render(sampleModel);
     const page = fileByName(files, `${kebabCase('zcl_pet_service')}.mdx`);
 
-    // MDX consumers parse the document themselves; we are not in an HTML
-    // context and do not escape `<` / `>`. The raw payload must survive
-    // so the consumer (e.g. Starlight) can decide how to render it.
-    expect(page.content).toContain('<script>alert("xss")</script>');
+    // MDX renders any `<Tag>` as a JSX component and any `{expr}` as a
+    // JSX expression. ABAP Doc source text is plain prose, so the
+    // renderer escapes these characters. The literal `<script>` payload
+    // must NOT survive verbatim — that would let an attacker inject
+    // JSX/HTML into the rendered docs.
+    expect(page.content).not.toContain('<script>alert("xss")</script>');
+    expect(page.content).toContain('&lt;script&gt;');
   });
 
   it('honours RenderOptions even though the v0 renderer does not use them', () => {

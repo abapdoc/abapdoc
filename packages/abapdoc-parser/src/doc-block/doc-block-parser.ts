@@ -114,7 +114,10 @@ export function splitPipeBlock(text: string): string[] {
     }
     current += ch;
   }
-  if (current.length > 0 || parts.length > 0) {
+  // Only push trailing content if it's non-empty. An input like
+  // 'foo |' would otherwise produce a trailing empty segment,
+  // which deviates from the documented behaviour.
+  if (current.length > 0) {
     parts.push(current);
   }
   return parts.map((p) => p.replace(/\s+$/u, ''));

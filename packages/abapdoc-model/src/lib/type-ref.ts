@@ -18,11 +18,25 @@ export const TypeRefKindSchema = z.enum([
 export type TypeRefKind = z.infer<typeof TypeRefKindSchema>;
 
 export const TypeRefSchema: z.ZodType<TypeRef> = z.lazy(() =>
-  z.object({
-    kind: TypeRefKindSchema,
-    name: z.string().min(1),
-    fields: z.array(TypeRefSchema).optional(),
-  }),
+  z
+    .object({
+      kind: TypeRefKindSchema,
+      name: z.string().min(1),
+      fields: z.array(TypeRefSchema).optional(),
+    })
+    // Invariant: only `ddic-table` and `ddic-structure` may carry
+    // `fields`. Other kinds (data-element, builtin, custom) refer to
+    // atomic types and must not embed a field list.
+    .refine(
+      (t) =>
+        (t.kind === 'ddic-table' || t.kind === 'ddic-structure') ||
+        t.fields === undefined,
+      {
+        message:
+          'Only ddic-table and ddic-structure TypeRefs may carry `fields`. Other kinds must omit it.',
+        path: ['fields'],
+      },
+    ),
 );
 
 export interface TypeRef {

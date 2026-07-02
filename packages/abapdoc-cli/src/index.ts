@@ -13,7 +13,7 @@
  */
 
 import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve, sep, posix } from 'node:path';
+import { dirname, isAbsolute, join, resolve, sep, posix } from 'node:path';
 
 import { Command } from 'commander';
 import type { DocumentationModel } from '@abapdoc/model';
@@ -40,6 +40,11 @@ async function runBuild(src: string, outDir: string, format: Format): Promise<nu
   const formats = format === 'all' ? (['html', 'mdx', 'json'] as const) : ([format] as const);
   await mkdir(outDir, { recursive: true });
 
+  // Resolve outDir to an absolute, canonicalised base once. Every
+  // output path is then validated to live under this base — prevents
+  // path traversal if a renderer's path field contains '..' segments
+  // (Amazon Q CWE-22 review).
+  const baseOut = resolve(outDir);
   let totalFiles = 0;
   for (const fmt of formats) {
     const result =
@@ -47,9 +52,23 @@ async function runBuild(src: string, outDir: string, format: Format): Promise<nu
       : fmt === 'html' ? renderHtml(reparsed)
       : renderMdx(reparsed);
     for (const f of result.files) {
-      const outPath = join(outDir, ...f.path.split(posix.sep));
-      await mkdir(dirname(outPath), { recursive: true });
-      await writeFile(outPath, f.content, 'utf8');
+      // Reject '..' segments and absolute paths up-front.
+      const segments = f.path.split(posix.sep);
+      if (segments.some((seg) => seg === '..' || seg === '' || isAbsolute(seg))) {
+        throw new Error(
+          `Unsafe renderer path (path traversal?): ${JSON.stringify(f.path)}`,
+        );
+      }
+      const outPath = join(baseOut, ...segments);
+      // Defence-in-depth: confirm the resolved path is inside baseOut.
+      const resolved = resolve(outPath);
+      if (!resolved.startsWith(baseOut + sep) && resolved !== baseOut) {
+        throw new Error(
+          `Resolved output path escapes base directory: ${resolved} not under ${baseOut}`,
+        );
+      }
+      await mkdir(dirname(resolved), { recursive: true });
+      await writeFile(resolved, f.content, 'utf8');
       totalFiles++;
     }
   }

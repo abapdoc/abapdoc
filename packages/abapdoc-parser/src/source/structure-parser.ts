@@ -66,6 +66,11 @@ function parseTypeBlock(
   for (; i < lines.length; i++) {
     const stripped = stripTrailingComment(lines[i] ?? '');
     const upper = keyword(stripped);
+    // Match the OUTER `END OF <name>.` only. Nested BEGIN OF …
+    // END OF blocks must NOT trigger the outer terminator, but the
+    // v0 parser doesn't track nesting depth — for now we stop on
+    // any END OF, which means single-level structures only. Nested
+    // structures need the v0.2 parser.
     if (upper.startsWith('END OF')) {
       endLine = i + 1;
       break;

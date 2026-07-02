@@ -281,25 +281,33 @@ function renderExceptionsList(exs: readonly { name: string }[]): string {
   return `#### Exceptions\n\n${items}`;
 }
 
-function renderTypeTable(types: readonly { name: string; visibility?: string; type: string }[]): string {
-  const headers = `| Name | Visibility | Type |`;
-  const sep = `| --- | --- | --- |`;
+interface DocBlockLike {
+  readonly summary: string;
+}
+
+function renderTypeTable(
+  types: readonly { name: string; visibility?: string; type: string; doc?: DocBlockLike }[],
+): string {
+  const headers = `| Name | Visibility | Type | Description |`;
+  const sep = `| --- | --- | --- | --- |`;
   const rows = types
     .map(
       (t) =>
-        `| \`${escapeMarkdown(t.name)}\` | ${t.visibility ?? ''} | \`${escapeMarkdown(t.type)}\` |`,
+        `| \`${escapeMarkdown(t.name)}\` | ${t.visibility ?? ''} | \`${escapeMarkdown(t.type)}\` | ${escapeMarkdown(t.doc?.summary ?? '')} |`,
     )
     .join('\n');
   return `${headers}\n${sep}\n${rows}`;
 }
 
-function renderAttributeTable(attrs: readonly { name: string; visibility: string; type: string }[]): string {
-  const headers = `| Name | Visibility | Type |`;
-  const sep = `| --- | --- | --- |`;
+function renderAttributeTable(
+  attrs: readonly { name: string; visibility: string; type: string; doc?: DocBlockLike }[],
+): string {
+  const headers = `| Name | Visibility | Type | Description |`;
+  const sep = `| --- | --- | --- | --- |`;
   const rows = attrs
     .map(
       (a) =>
-        `| \`${escapeMarkdown(a.name)}\` | ${a.visibility} | \`${escapeMarkdown(a.type)}\` |`,
+        `| \`${escapeMarkdown(a.name)}\` | ${a.visibility} | \`${escapeMarkdown(a.type)}\` | ${escapeMarkdown(a.doc?.summary ?? '')} |`,
     )
     .join('\n');
   return `${headers}\n${sep}\n${rows}`;
@@ -323,12 +331,27 @@ function renderFieldsTable(fields: readonly TypeRef[]): string {
  *
  * Description becomes a plain paragraph; tag sections follow.
  */
+/**
+ * Escape body text so MDX doesn't interpret it as JSX / expressions.
+ *
+ * MDX renders any `{...}` as a JSX expression and any `<Tag>` as a
+ * component reference. ABAP Doc source text is plain prose, so we
+ * escape these characters to keep the output as raw text.
+ */
+export function escapeMdxBody(value: string): string {
+  return value
+    .replace(/\{/g, '&#123;')
+    .replace(/\}/g, '&#125;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 export function renderDocBlock(doc: DocBlock | undefined): string {
   if (!doc) return '';
   const parts: string[] = [];
-  parts.push(doc.summary);
+  parts.push(escapeMdxBody(doc.summary));
   if (doc.description) {
-    parts.push(doc.description);
+    parts.push(escapeMdxBody(doc.description));
   }
   for (const tag of doc.tags) {
     parts.push(renderTag(tag));

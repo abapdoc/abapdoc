@@ -5,10 +5,10 @@
   "type": "module",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
-  "types": "./src/index.d.ts",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.d.ts",
+      "types": "./dist/index.d.ts",
       "development": "./src/index.ts",
       "import": "./src/index.ts",
       "default": "./src/index.ts"
@@ -24,30 +24,7 @@
   "scripts": {
     "prebuild": "tsx scripts/dump-json-schema.ts"
   },
-  "nx": {
-    "targets": {
-      "build": {
-        "executor": "@nx/js:tsc",
-        "outputs": [
-          "{options.outputPath}"
-        ],
-        "options": {
-          "outputPath": "packages/abapdoc-model/dist",
-          "main": "packages/abapdoc-model/src/index.ts",
-          "tsConfig": "packages/abapdoc-model/tsconfig.lib.json",
-          "rootDir": "packages/abapdoc-model/src",
-          "generatePackageJson": false,
-          "assets": [
-            {
-              "input": "./packages/abapdoc-model/src",
-              "glob": "**/*.d.ts",
-              "output": "."
-            }
-          ]
-        }
-      }
-    }
-  },
+  "nx": {},
   "dependencies": {
     "tslib": "^2.3.0",
     "zod": "^3.25.76"

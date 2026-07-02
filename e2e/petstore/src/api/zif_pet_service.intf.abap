@@ -4,6 +4,14 @@
 INTERFACE zif_pet_service
   PUBLIC.
 
+  TYPES:
+    BEGIN OF ty_pet,
+      pet_id   TYPE sysuuid_x,
+      name     TYPE string,
+      species  TYPE string,
+      born_on  TYPE d,
+    END OF ty_pet.
+
   TYPES ty_pet_id TYPE sysuuid_x.
 
   METHODS:

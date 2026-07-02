@@ -500,10 +500,9 @@ function parseTypesLine(line: string): TypesLineParts | undefined {
   if (tokens[0]?.toUpperCase() !== 'TYPES') {
     return undefined;
   }
-  // Skip the colon if present (`TYPES:`).
-  if (tokens.length === 1) {
-    return undefined;
-  }
+  // Skip the colon if present (`TYPES:`) — the colon never produces a
+  // second token in tokenizeStatement (the `:` is stripped), so by
+  // here we already know tokens.length >= 2.
   const firstTok = tokens[1] ?? '';
   if (firstTok.toUpperCase() === 'BEGIN' && tokens[2]?.toUpperCase() === 'OF') {
     // BEGIN OF <name> … — capture the name; the type is multi-line and

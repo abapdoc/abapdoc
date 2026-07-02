@@ -261,13 +261,14 @@ function renderClassBody(cls: Class): string {
   if ((cls.types ?? []).length > 0) {
     parts.push(`<h2>Types</h2>`);
     parts.push(
-      `<table><thead><tr><th>Name</th><th>Visibility</th><th>Type</th></tr></thead><tbody>` +
+      `<table><thead><tr><th>Name</th><th>Visibility</th><th>Type</th><th>Description</th></tr></thead><tbody>` +
         (cls.types ?? [])
           .map(
             (t) =>
               `<tr><td><code>${escapeHtml(t.name)}</code></td>` +
               `<td>${escapeHtml(t.visibility ?? '')}</td>` +
-              `<td><code>${escapeHtml(t.type)}</code></td></tr>`,
+              `<td><code>${escapeHtml(t.type)}</code></td>` +
+              `<td>${t.doc !== undefined ? escapeHtml(t.doc.summary) : ''}</td></tr>`,
           )
           .join('') +
         `</tbody></table>`,
@@ -277,13 +278,14 @@ function renderClassBody(cls: Class): string {
   if ((cls.attributes ?? []).length > 0) {
     parts.push(`<h2>Attributes</h2>`);
     parts.push(
-      `<table><thead><tr><th>Name</th><th>Visibility</th><th>Type</th></tr></thead><tbody>` +
+      `<table><thead><tr><th>Name</th><th>Visibility</th><th>Type</th><th>Description</th></tr></thead><tbody>` +
         (cls.attributes ?? [])
           .map(
             (a) =>
               `<tr><td><code>${escapeHtml(a.name)}</code></td>` +
               `<td>${escapeHtml(a.visibility)}</td>` +
-              `<td><code>${escapeHtml(a.type)}</code></td></tr>`,
+              `<td><code>${escapeHtml(a.type)}</code></td>` +
+              `<td>${a.doc !== undefined ? escapeHtml(a.doc.summary) : ''}</td></tr>`,
           )
           .join('') +
         `</tbody></table>`,

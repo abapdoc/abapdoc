@@ -12,7 +12,7 @@ describe('parseAbapDoc — DocBlock state machine', () => {
       'ENDCLASS.',
     ].join('\n');
     // Anchor on the CLASS line; no DocBlock above.
-    expect(parseAbapDoc(source, 1)).toBeUndefined();
+    expect(parseAbapDoc(source, 1, 'src/test.abap')).toBeUndefined();
   });
 
   it('returns undefined when a blank line separates the doc from the anchor', () => {
@@ -21,7 +21,7 @@ describe('parseAbapDoc — DocBlock state machine', () => {
       '',
       'METHOD do_something.',
     ].join('\n');
-    expect(parseAbapDoc(source, 3)).toBeUndefined();
+    expect(parseAbapDoc(source, 3, 'src/test.abap')).toBeUndefined();
   });
 
   it('parses a simple summary with no tags', () => {
@@ -29,12 +29,12 @@ describe('parseAbapDoc — DocBlock state machine', () => {
       '"! Look up a pet by id.',
       'METHOD get_pet.',
     ].join('\n');
-    const block = parseAbapDoc(source, 2);
+    const block = parseAbapDoc(source, 2, 'src/test.abap');
     expect(block).toBeDefined();
     expect(block!.summary).toBe('Look up a pet by id.');
     expect(block!.description).toBeUndefined();
     expect(block!.tags).toEqual([]);
-    expect(block!.sourceLocation.file).toBe('');
+    expect(block!.sourceLocation.file).toBe('src/test.abap');
     expect(block!.sourceLocation.startLine).toBe(1);
     expect(block!.sourceLocation.endLine).toBe(1);
   });
@@ -49,7 +49,7 @@ describe('parseAbapDoc — DocBlock state machine', () => {
       '"! @raising cx_not_found not found',
       'METHOD get_pet.',
     ].join('\n');
-    const block = parseAbapDoc(source, 7);
+    const block = parseAbapDoc(source, 7, 'src/test.abap');
     expect(block).toBeDefined();
     expect(block!.summary).toBe('Read a single pet.');
     // The blank line moved us into description; "Throws when the
@@ -72,7 +72,7 @@ describe('parseAbapDoc — DocBlock state machine', () => {
       '"! |   must be a positive integer.',
       'METHOD get_pet.',
     ].join('\n');
-    const block = parseAbapDoc(source, 4);
+    const block = parseAbapDoc(source, 4, 'src/test.abap');
     expect(block).toBeDefined();
     expect(block!.tags).toHaveLength(1);
     const param = block!.tags[0] as { kind: 'parameter'; name: string; description: string };
@@ -88,7 +88,7 @@ describe('parseAbapDoc — DocBlock state machine', () => {
       '"! @raising cx_no_match no row matched',
       'METHOD get_pet.',
     ].join('\n');
-    const block = parseAbapDoc(source, 3);
+    const block = parseAbapDoc(source, 3, 'src/test.abap');
     expect(block).toBeDefined();
     const ret = block!.tags[0] as { kind: 'return'; description: string };
     expect(ret.kind).toBe('return');
@@ -104,7 +104,7 @@ describe('parseAbapDoc — DocBlock state machine', () => {
       '"! @see {@link zcl_pet_service~get_pet}',
       'METHOD get_pet.',
     ].join('\n');
-    const block = parseAbapDoc(source, 2);
+    const block = parseAbapDoc(source, 2, 'src/test.abap');
     expect(block).toBeDefined();
     const see = block!.tags[0] as { kind: 'see'; target: string };
     expect(see.kind).toBe('see');
@@ -117,7 +117,7 @@ describe('parseAbapDoc — DocBlock state machine', () => {
       '"! @author developer',
       'METHOD get_pet.',
     ].join('\n');
-    const block = parseAbapDoc(source, 3);
+    const block = parseAbapDoc(source, 3, 'src/test.abap');
     expect(block).toBeDefined();
     expect(block!.tags).toHaveLength(2);
     expect(block!.tags[0]).toEqual({ kind: 'custom', name: 'since', body: 'v1.2.0' });
@@ -131,7 +131,7 @@ describe('parseAbapDoc — DocBlock state machine', () => {
       '"! trailing prose line',
       'METHOD do_x.',
     ].join('\n');
-    const block = parseAbapDoc(source, 4);
+    const block = parseAbapDoc(source, 4, 'src/test.abap');
     expect(block).toBeDefined();
     expect(block!.summary).toBe('Summary.');
     expect(block!.description).toBe('trailing prose line');
@@ -149,7 +149,7 @@ describe('parseAbapDoc — DocBlock state machine', () => {
       `DATA(lv) = '"! hello'.`,
       'METHOD do_x.',
     ].join('\n');
-    const block = parseAbapDoc(source, 2);
+    const block = parseAbapDoc(source, 2, 'src/test.abap');
     expect(block).toBeUndefined();
   });
 });
