@@ -279,12 +279,13 @@ function sliceToMethod(parent: readonly string[], slice: Slice): Method {
       const direction = clauseFirst.toLowerCase() as Parameter['direction'];
       const declTokens = clauseTokens.slice(1);
 
-      const extractParamName = (idx: number): string => {
+      const getName = (idx: number): string => {
         const tok = declTokens[idx]?.value ?? '';
-        if (tok === ')') {
-          // VALUE(name) or REFERENCE(name) wrapper: name is the token
-          // immediately before the closing paren.
-          return declTokens[idx - 1]?.value ?? '';
+        const upper = tok.toUpperCase();
+        // VALUE(name) or REFERENCE(name) wrappers place the keyword before
+        // the actual name token; the tokenizer drops the parentheses.
+        if (upper === 'VALUE' || upper === 'REFERENCE') {
+          return declTokens[idx + 1]?.value ?? tok;
         }
         return tok;
       };
@@ -303,7 +304,7 @@ function sliceToMethod(parent: readonly string[], slice: Slice): Method {
         typePos: number,
         nextNamePos: number
       ): void => {
-        const paramName = extractParamName(namePos);
+        const paramName = getName(namePos);
         const typeParts: string[] = [];
         for (let k = typePos + 1; k < nextNamePos; k++) {
           const v = declTokens[k]?.value ?? '';
@@ -338,7 +339,7 @@ function sliceToMethod(parent: readonly string[], slice: Slice): Method {
         // No TYPE keyword; treat the first token as the parameter name.
         if (declTokens.length > 0) {
           const parameter: Parameter = {
-            name: extractParamName(0),
+            name: getName(0),
             direction,
             type: 'any',
           };

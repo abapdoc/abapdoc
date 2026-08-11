@@ -13,7 +13,15 @@
  */
 
 import { mkdir, realpath, rm, writeFile } from 'node:fs/promises';
-import { dirname, isAbsolute, join, resolve, sep, posix } from 'node:path';
+import {
+  dirname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+  sep,
+  posix,
+} from 'node:path';
 
 import { Command } from 'commander';
 import type { DocumentationModel } from '@abapdoc/model';
@@ -32,6 +40,27 @@ function validateFormat(format: string): format is Format {
   return (FORMATS as readonly string[]).includes(format);
 }
 
+async function canonicalizePath(p: string): Promise<string> {
+  const resolved = resolve(p);
+  try {
+    return await realpath(resolved);
+  } catch {
+    // If the target does not exist yet, walk up to the nearest existing
+    // ancestor, resolve any symlinks there, then append the unresolved
+    // suffix. This catches output paths like <symlink-to-src>/generated.
+    let dir = dirname(resolved);
+    while (dir !== dirname(dir)) {
+      try {
+        const realDir = await realpath(dir);
+        return join(realDir, relative(dir, resolved));
+      } catch {
+        dir = dirname(dir);
+      }
+    }
+    return resolved;
+  }
+}
+
 async function runBuild(
   src: string,
   outDir: string,
@@ -39,26 +68,14 @@ async function runBuild(
 ): Promise<number> {
   // Refuse output directories that overlap the source tree so the
   // cleanup step cannot delete the very files we are about to extract.
-  // Resolve symlinks and normalize case so a symlinked source or output
-  // path cannot bypass a purely lexical check.
-  const sourceRoot = await realpath(resolve(src));
-  let outputRoot: string;
-  try {
-    outputRoot = await realpath(resolve(outDir));
-  } catch {
-    outputRoot = resolve(outDir);
-  }
-
-  const caseInsensitive =
-    process.platform === 'win32' || process.platform === 'darwin';
-  const normalize = (p: string): string =>
-    caseInsensitive ? p.toLowerCase() : p;
-  const srcKey = normalize(sourceRoot);
-  const outKey = normalize(outputRoot);
+  // Resolve all symlinks and compare canonical paths; filesystems that
+  // are case-insensitive will already be represented by the realpath.
+  const sourceRoot = await canonicalizePath(src);
+  const outputRoot = await canonicalizePath(outDir);
   if (
-    outKey === srcKey ||
-    outKey.startsWith(srcKey + sep) ||
-    srcKey.startsWith(outKey + sep)
+    outputRoot === sourceRoot ||
+    outputRoot.startsWith(sourceRoot + sep) ||
+    sourceRoot.startsWith(outputRoot + sep)
   ) {
     throw new Error('Output directory must not overlap source directory');
   }
