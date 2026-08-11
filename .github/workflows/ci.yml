@@ -49,7 +49,7 @@ jobs:
         run: npm test
 
       - name: End-to-end smoke build
-        run: npm run abapdoc build --src e2e/petstore --out dist/petstore-docs
+        run: npm run abapdoc -- build --src e2e/petstore --out dist/petstore-docs
 
       - name: Upload generated docs
         if: always()
