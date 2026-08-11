@@ -23,37 +23,61 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full design.
 
 ## Packages
 
-| Package                          | Role                                                                  |
-| -------------------------------- | --------------------------------------------------------------------- |
-| `@abapdoc/model`                 | Zod schemas + inferred types for the documentation model. JSON Schema export for non-TS consumers. |
-| `@abapdoc/parser`                | ABAP source → model. State-machine parser for ABAP Doc tags (`@parameter`, `@return`, `@raising`, …). |
-| `@abapdoc/extractor`             | File-based walker for abapGit-style repos (DDIC XML + ABAP source). |
-| `@abapdoc/renderer-json`         | Model → single `model.json`.                                           |
-| `@abapdoc/renderer-html`         | Model → one `.html` per object + `index.html`. Self-contained inline CSS. |
-| `@abapdoc/renderer-mdx`          | Model → one `.mdx` per object with YAML frontmatter. Markdown tables, no JSX. |
-| `@abapdoc/cli`                   | `abapdoc build` / `abapdoc validate` commands.                        |
-| `@abapdoc/starlight`             | (existing scaffold) Astro Starlight integration for the docs site.   |
+| Package                  | Role                                                                                                  |
+| ------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `@abapdoc/model`         | Zod schemas + inferred types for the documentation model. JSON Schema export for non-TS consumers.    |
+| `@abapdoc/parser`        | ABAP source → model. State-machine parser for ABAP Doc tags (`@parameter`, `@return`, `@raising`, …). |
+| `@abapdoc/extractor`     | File-based walker for abapGit-style repos (DDIC XML + ABAP source).                                   |
+| `@abapdoc/renderer-json` | Model → single `model.json`.                                                                          |
+| `@abapdoc/renderer-html` | Model → one `.html` per object + `index.html`. Self-contained inline CSS.                             |
+| `@abapdoc/renderer-mdx`  | Model → one `.mdx` per object with YAML frontmatter. Markdown tables, no JSX.                         |
+| `@abapdoc/cli`           | `abapdoc build` / `abapdoc validate` commands.                                                        |
+| `@abapdoc/starlight`     | (existing scaffold) Astro Starlight integration for the docs site.                                    |
 
 ## Quick start
 
 ```sh
 npm install
 npm run build
-npm run abapdoc build --src e2e/petstore --out dist/docs
+npm run abapdoc -- build --src e2e/petstore --out dist/docs
 ```
 
 Open `dist/docs/index.html` to browse the generated docs.
 
+## Example
+
+A generated documentation set for the sample `e2e/petstore` abapGit repo is
+committed to [`examples/abapdocs`](examples/abapdocs). Browse it locally by
+opening `examples/abapdocs/index.html`, or see the live version once GitHub
+Pages is enabled at:
+
+`https://abapdoc.github.io/abapdoc/`
+
+Generate a fresh copy at any time:
+
+```sh
+npm run build
+npm run generate:example
+```
+
+## GitHub Pages
+
+The repository includes [`.github/workflows/pages.yml`](.github/workflows/pages.yml),
+which builds the packages, renders the petstore sample as HTML, and deploys it
+to GitHub Pages on every push to `main` or `feature/v0-architecture`.
+
+Enable Pages in **Settings → Pages** and set the source to **GitHub Actions**.
+
 ## Commands
 
-| Command                                  | What it does                                                |
-| ---------------------------------------- | ----------------------------------------------------------- |
-| `npm run build`                          | Build all packages via Nx.                                 |
-| `npm run test`                           | Run vitest across all packages.                             |
-| `npm run typecheck`                      | Type-check all packages via `tsc --noEmit`.                 |
-| `npm run lint`                           | ESLint across the repo.                                     |
-| `npm run abapdoc build --src <dir> --out <dir> [--format html|mdx|json|all]` | Extract and render documentation for the given abapGit repo. |
-| `npm run abapdoc validate --src <dir>`   | Extract and validate against the model schema (no output). |
+| Command                                            | What it does                                                                                              |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `npm run build`                                    | Build all packages via Nx.                                                                                |
+| `npm run test`                                     | Run vitest across all packages.                                                                           |
+| `npm run typecheck`                                | Type-check all packages via `tsc --noEmit`.                                                               |
+| `npm run lint`                                     | ESLint across the repo.                                                                                   |
+| `npm run abapdoc -- build --src <dir> --out <dir>` | Extract and render documentation for the given abapGit repo. Add `--format html`, `mdx`, `json` or `all`. |
+| `npm run abapdoc -- validate --src <dir>`          | Extract and validate against the model schema (no output).                                                |
 
 ## Development
 
@@ -61,7 +85,7 @@ Open `dist/docs/index.html` to browse the generated docs.
 - Run the full test suite: `npm test`
 - Type-check: `npm run typecheck`
 - Render the petstore sample to `dist/petstore-docs`:
-  `npm run abapdoc build --src e2e/petstore --out dist/petstore-docs`
+  `npm run abapdoc -- build --src e2e/petstore --out dist/petstore-docs`
 
 ## Architecture
 
@@ -82,7 +106,7 @@ The v0 deliverable is intentionally small. Most useful contributions:
    reads from a live SAP system via `@abapify/adt-cli`.
 
 Open a PR; CI runs `npm run build`, `npm test`, `npm run typecheck`,
-and `npm run abapdoc build --src e2e/petstore --out dist/petstore-docs`.
+and `npm run abapdoc -- build --src e2e/petstore --out dist/petstore-docs`.
 
 ## License
 
