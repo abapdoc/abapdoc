@@ -103,12 +103,14 @@ export function registerRenderer(renderer: Renderer): void {
   }
   const { format } = renderer;
   if (typeof format !== 'string' || format.length === 0) {
-    throw new Error('registerRenderer: renderer.format must be a non-empty string');
+    throw new Error(
+      'registerRenderer: renderer.format must be a non-empty string'
+    );
   }
   if (!(SUPPORTED_FORMATS as readonly string[]).includes(format)) {
     throw new Error(
       `registerRenderer: unsupported format ${JSON.stringify(format)} ` +
-        `(must be one of ${SUPPORTED_FORMATS.join(', ')})`,
+        `(must be one of ${SUPPORTED_FORMATS.join(', ')})`
     );
   }
   if (typeof renderer.render !== 'function') {

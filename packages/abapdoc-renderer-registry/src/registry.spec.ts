@@ -11,7 +11,11 @@ import {
 function sampleModel(): DocumentationModel {
   return {
     version: '1.0.0',
-    source: { provider: 'test', rootDir: '/test', generatedAt: '2026-07-02T00:00:00.000Z' },
+    source: {
+      provider: 'test',
+      rootDir: '/test',
+      generatedAt: '2026-07-02T00:00:00.000Z',
+    },
     objects: [],
   };
 }
@@ -19,7 +23,9 @@ function sampleModel(): DocumentationModel {
 function stubRenderer(format: Renderer['format']): Renderer {
   return {
     format,
-    render: () => ({ files: [{ path: `out.${format}`, content: `# stub ${format}` }] }),
+    render: () => ({
+      files: [{ path: `out.${format}`, content: `# stub ${format}` }],
+    }),
   };
 }
 
@@ -59,12 +65,23 @@ describe('@abapdoc/renderer-registry', () => {
     registerRenderer(stubRenderer('json'));
     registerRenderer(stubRenderer('mdx'));
     registerRenderer(stubRenderer('html'));
-    expect(listRenderers().map((r) => r.format)).toEqual(['json', 'mdx', 'html']);
+    expect(listRenderers().map((r) => r.format)).toEqual([
+      'json',
+      'mdx',
+      'html',
+    ]);
   });
 
   it('registerRenderer rejects a renderer whose format is empty or invalid', () => {
-    expect(() => registerRenderer(stubRenderer('' as Renderer['format']))).toThrow();
-    expect(() => registerRenderer({ format: 'foo' as Renderer['format'], render: () => ({ files: [] }) })).toThrow();
+    expect(() =>
+      registerRenderer(stubRenderer('' as Renderer['format']))
+    ).toThrow();
+    expect(() =>
+      registerRenderer({
+        format: 'foo' as Renderer['format'],
+        render: () => ({ files: [] }),
+      })
+    ).toThrow();
   });
 
   it('render produces files from the registered renderer', () => {

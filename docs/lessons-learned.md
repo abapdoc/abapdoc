@@ -21,7 +21,7 @@ When you start a task, follow this template:
    - **Two concepts in one variable** → split them. (See Rule 5.)
    - **Test passes only with the bug** → the test is wrong. (See Rule 4.)
 6. Verify: `npx nx run-many -t test,build,typecheck,lint -p <packages>
-   --skip-nx-cache` + the e2e smoke build.
+--skip-nx-cache` + the e2e smoke build.
 7. Commit. Push. Open draft PR.
 8. /act — reply to each thread with the commit SHA, then resolve.
 9. Generate next handoff doc.
@@ -34,6 +34,7 @@ When you start a task, follow this template:
 deep tree is error-prone and easy to miss nested cases.
 
 **Patterns:**
+
 - Use a single recursive walker with `structuredClone(node)` to apply a
   tree-wide transformation.
 - The walker only needs to know the shape of "what to stamp"; callers
@@ -51,6 +52,7 @@ one place.
 hard to revert selectively.
 
 **Patterns:**
+
 - Group fixes by area: security, model, renderers, parser.
 - Include the commit SHA in each per-thread reply so reviewers can find
   the change quickly.
@@ -64,6 +66,7 @@ hard to revert selectively.
 which commit addressed which thread.
 
 **Patterns:**
+
 - Reply first with the commit SHA and a one-sentence description.
 - Then resolve.
 - Never resolve-only.
@@ -77,6 +80,7 @@ has a reply pointing to a commit SHA before the resolve.
 buggy behaviour will pass even after the fix breaks that state.
 
 **Patterns:**
+
 - If a test was written when the code was buggy, the test itself may
   encode the bug. Re-read the test carefully when the code is "fixed".
 - Look for assertions that depend on internal state reachable only
@@ -95,6 +99,7 @@ asserted a state that was only achievable via the bug.
 different things, the parser/renderer will mix them.
 
 **Patterns:**
+
 - Identify the two concepts explicitly. Look for "visibility",
   "scope", "level", "current", "default" — common split-points.
 - Snapshot the upper-level value when the lower-level one starts
@@ -114,6 +119,7 @@ mostly defer-to-X items. Per-thread phrase-matching is brittle and
 burns time without adding value.
 
 **Patterns:**
+
 - When thread count > 20 and most are defer items, post ONE consistent
   reply listing the defer-to list + resolved-this-round list, and
   resolve all of them.
@@ -129,6 +135,7 @@ all 30 in ~30 seconds. ROI on per-thread reply was negative.
 invariants that don't fit the basic Zod schema shape.
 
 **Patterns:**
+
 - Use `.refine((value) => ..., { message, path: ['<field>'] })` on
   the relevant schema.
 - Include a falsification trace in the message — "endLine must be >=
@@ -145,6 +152,7 @@ PRIVATE SECTION look like decorative noise but they DO change the
 visibility of subsequent declarations.
 
 **Patterns:**
+
 - Don't `continue` on a SECTION line without updating state.
 - Keep section-aware parsing separate from class-level visibility
   (Rule 5).
@@ -159,6 +167,7 @@ attributes declared after PROTECTED SECTION inherited PUBLIC visibility.
 lose information as soon as the source has multiple sections.
 
 **Patterns:**
+
 - Track the current section via a local variable.
 - Update it when you see a section header keyword.
 - Pass it as a parameter to the per-line parser.
@@ -175,6 +184,7 @@ downstream extraction that expects a `VALUE` keyword separate from a
 `name`.
 
 **Patterns:**
+
 - Audit the tokeniser's split set against every ABAP construct it
   will feed. Common additions: `(` and `)` for VALUE-wrapper
   extraction, `=` for default-value parsing, `~` for interface-method

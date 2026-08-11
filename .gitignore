@@ -46,3 +46,6 @@ vitest.config.*.timestamp*
 
 # Astro generated
 .astro
+
+# Generated GitHub Pages output
+_site

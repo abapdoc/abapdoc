@@ -42,7 +42,7 @@ export interface RenderResult {
  */
 export function render(
   model: DocumentationModel,
-  _options?: RenderOptions,
+  _options?: RenderOptions
 ): RenderResult {
   // Cheap insurance — the CLI may pass a model straight off disk.
   DocumentationModelSchema.parse(model);

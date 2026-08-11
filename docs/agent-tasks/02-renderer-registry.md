@@ -11,9 +11,11 @@ The current CLI lives at `packages/abapdoc-cli/src/index.ts:39-66`:
 
 ```typescript
 const result =
-  fmt === 'json' ? renderJson(reparsed)
-  : fmt === 'html' ? renderHtml(reparsed)
-  : renderMdx(reparsed);
+  fmt === 'json'
+    ? renderJson(reparsed)
+    : fmt === 'html'
+    ? renderHtml(reparsed)
+    : renderMdx(reparsed);
 ```
 
 This is fine for 3 renderers but won't scale. Adding a Markdown renderer
@@ -92,6 +94,7 @@ node packages/abapdoc-cli/dist/index.js build --src e2e/petstore --out /tmp/abap
 ```
 
 Expected e2e output:
+
 ```
 Rendered 4 object(s): 1 classes, 1 interfaces, 1 function modules, 1 tables, 0 programs.
 Wrote 10 file(s) to /tmp/abapdoc-out.

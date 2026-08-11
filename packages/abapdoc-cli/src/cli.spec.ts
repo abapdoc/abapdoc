@@ -16,8 +16,17 @@ describe('CLI — integration', () => {
       const outDir = join(tmp, 'docs');
       const result = await execFileAsync(
         'node',
-        [CLI_PATH, 'build', '--src', 'e2e/petstore', '--out', outDir, '--format', 'all'],
-        { cwd: join(__dirname, '..', '..', '..') },
+        [
+          CLI_PATH,
+          'build',
+          '--src',
+          'e2e/petstore',
+          '--out',
+          outDir,
+          '--format',
+          'all',
+        ],
+        { cwd: join(__dirname, '..', '..', '..') }
       );
       expect(result.stdout).toContain('Rendered');
       // Check files exist
@@ -39,19 +48,26 @@ describe('CLI — integration', () => {
     await expect(
       execFileAsync(
         'node',
-        [CLI_PATH, 'build', '--src', 'e2e/petstore', '--out', '/tmp/nope', '--format', 'docx'],
-        { cwd: join(__dirname, '..', '..', '..') },
-      ),
+        [
+          CLI_PATH,
+          'build',
+          '--src',
+          'e2e/petstore',
+          '--out',
+          '/tmp/nope',
+          '--format',
+          'docx',
+        ],
+        { cwd: join(__dirname, '..', '..', '..') }
+      )
     ).rejects.toThrow();
   }, 30_000);
 
   it('rejects missing --src', async () => {
     await expect(
-      execFileAsync(
-        'node',
-        [CLI_PATH, 'build', '--out', '/tmp/nope'],
-        { cwd: join(__dirname, '..', '..', '..') },
-      ),
+      execFileAsync('node', [CLI_PATH, 'build', '--out', '/tmp/nope'], {
+        cwd: join(__dirname, '..', '..', '..'),
+      })
     ).rejects.toThrow();
   }, 30_000);
 
@@ -66,8 +82,17 @@ describe('CLI — integration', () => {
       const outDir = join(tmp, 'docs');
       const result = await execFileAsync(
         'node',
-        [CLI_PATH, 'build', '--src', 'e2e/petstore', '--out', outDir, '--format', 'html'],
-        { cwd: join(__dirname, '..', '..', '..') },
+        [
+          CLI_PATH,
+          'build',
+          '--src',
+          'e2e/petstore',
+          '--out',
+          outDir,
+          '--format',
+          'html',
+        ],
+        { cwd: join(__dirname, '..', '..', '..') }
       );
       expect(result.stdout).toMatch(/Rendered 4 object\(s\)/);
       // HTML-specific output must be present.

@@ -30,7 +30,9 @@
     },
     "test": {
       "executor": "@nx/vite:test",
-      "outputs": ["{workspaceRoot}/coverage/packages/abapdoc-renderer-registry"],
+      "outputs": [
+        "{workspaceRoot}/coverage/packages/abapdoc-renderer-registry"
+      ],
       "options": {
         "configFile": "packages/abapdoc-renderer-registry/vite.config.ts"
       }

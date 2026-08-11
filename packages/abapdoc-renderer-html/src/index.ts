@@ -67,7 +67,7 @@ export interface RenderResult {
  */
 export function render(
   model: DocumentationModel,
-  options: RenderOptions = {},
+  options: RenderOptions = {}
 ): RenderResult {
   // Cheap insurance at the model boundary.
   DocumentationModelSchema.parse(model);
@@ -198,7 +198,10 @@ ${body}
 `;
 }
 
-function renderIndexPage(objects: readonly AbapObject[], title: string): string {
+function renderIndexPage(
+  objects: readonly AbapObject[],
+  title: string
+): string {
   const groups = groupByKind(objects);
   const sections = (Object.keys(KIND_LABELS) as Array<keyof typeof KIND_LABELS>)
     .filter((kind) => groups[kind].length > 0)
@@ -207,7 +210,9 @@ function renderIndexPage(objects: readonly AbapObject[], title: string): string 
 
   const body = `
 <h1>${escapeHtml(title)}</h1>
-<p class="lead">${objects.length} documented object${objects.length === 1 ? '' : 's'}.</p>
+<p class="lead">${objects.length} documented object${
+    objects.length === 1 ? '' : 's'
+  }.</p>
 ${sections}
 `.trim();
 
@@ -216,12 +221,14 @@ ${sections}
 
 function renderIndexSection(
   kind: keyof typeof KIND_LABELS,
-  objs: readonly AbapObject[],
+  objs: readonly AbapObject[]
 ): string {
   const items = objs
     .map(
       (o) =>
-        `<li><a href="${escapeHtml(objectPagePath(o))}.html"><code>${escapeHtml(o.name)}</code></a></li>`,
+        `<li><a href="${escapeHtml(objectPagePath(o))}.html"><code>${escapeHtml(
+          o.name
+        )}</code></a></li>`
     )
     .join('\n');
   return `
@@ -233,22 +240,29 @@ ${items}
 }
 
 function renderObjectPage(obj: AbapObject, siteTitle: string): string {
+  const kindLabel = KIND_LABELS[obj.kind];
+  const badgeClass = BADGE_CSS_KIND[obj.kind];
   const heading = `
-<h1><code>${escapeHtml(obj.name)}</code><span class="badge badge--${cssKind(obj)}">${escapeHtml(KIND_LABELS[cssKind(obj)])}</span></h1>
+<h1><code>${escapeHtml(
+    obj.name
+  )}</code><span class="badge badge--${badgeClass}">${escapeHtml(
+    kindLabel
+  )}</span></h1>
 <a href="index.html">\u2190 ${escapeHtml(siteTitle)}</a>
 `.trim();
 
-  const body = obj.kind === 'class'
-    ? renderClassBody(obj)
-    : obj.kind === 'interface'
+  const body =
+    obj.kind === 'class'
+      ? renderClassBody(obj)
+      : obj.kind === 'interface'
       ? renderInterfaceBody(obj)
       : obj.kind === 'function-module'
-        ? renderFunctionModuleBody(obj)
-        : obj.kind === 'program'
-          ? renderProgramBody(obj)
-          : obj.kind === 'table'
-            ? renderTableBody(obj)
-            : renderStructureBody(obj);
+      ? renderFunctionModuleBody(obj)
+      : obj.kind === 'program'
+      ? renderProgramBody(obj)
+      : obj.kind === 'table'
+      ? renderTableBody(obj)
+      : renderStructureBody(obj);
 
   return htmlShell(`${obj.name} \u00b7 ${siteTitle}`, `${heading}\n${body}`);
 }
@@ -279,10 +293,12 @@ function renderClassBody(cls: Class): string {
               `<tr><td><code>${escapeHtml(t.name)}</code></td>` +
               `<td>${escapeHtml(t.visibility ?? '')}</td>` +
               `<td><code>${escapeHtml(t.type)}</code></td>` +
-              `<td>${t.doc !== undefined ? escapeHtml(t.doc.summary) : ''}</td></tr>`,
+              `<td>${
+                t.doc !== undefined ? escapeHtml(t.doc.summary) : ''
+              }</td></tr>`
           )
           .join('') +
-        `</tbody></table>`,
+        `</tbody></table>`
     );
   }
 
@@ -296,10 +312,12 @@ function renderClassBody(cls: Class): string {
               `<tr><td><code>${escapeHtml(a.name)}</code></td>` +
               `<td>${escapeHtml(a.visibility)}</td>` +
               `<td><code>${escapeHtml(a.type)}</code></td>` +
-              `<td>${a.doc !== undefined ? escapeHtml(a.doc.summary) : ''}</td></tr>`,
+              `<td>${
+                a.doc !== undefined ? escapeHtml(a.doc.summary) : ''
+              }</td></tr>`
           )
           .join('') +
-        `</tbody></table>`,
+        `</tbody></table>`
     );
   }
 
@@ -347,14 +365,18 @@ function renderInheritance(cls: Class): string {
   const bits: string[] = [];
   if (cls.superclass) {
     bits.push(
-      `<p>Extends <a href="${escapeHtml(kebabCase(cls.superclass))}.html"><code>${escapeHtml(cls.superclass)}</code></a></p>`,
+      `<p>Extends <a href="${escapeHtml(
+        kebabCase(cls.superclass)
+      )}.html"><code>${escapeHtml(cls.superclass)}</code></a></p>`
     );
   }
   if (cls.interfaces && cls.interfaces.length > 0) {
     const links = cls.interfaces
       .map(
         (i) =>
-          `<a href="${escapeHtml(kebabCase(i))}.html"><code>${escapeHtml(i)}</code></a>`,
+          `<a href="${escapeHtml(kebabCase(i))}.html"><code>${escapeHtml(
+            i
+          )}</code></a>`
       )
       .join(', ');
     bits.push(`<p>Implements ${links}</p>`);
@@ -380,15 +402,21 @@ function renderMethodSection(method: Method): string {
     parts.push(renderDocBlock(method.doc));
   }
 
-  if (method.parameters.length > 0) parts.push(renderParametersTable(method.parameters));
+  if (method.parameters.length > 0)
+    parts.push(renderParametersTable(method.parameters));
   if (method.returning) {
     parts.push(
-      `<div class="return-callout"><strong>Returns</strong> <code>${escapeHtml(method.returning.type)}</code>${
-        method.returning.doc ? ` \u2014 ${escapeHtml(renderDocBlockText(method.returning.doc))}` : ''
-      }</div>`,
+      `<div class="return-callout"><strong>Returns</strong> <code>${escapeHtml(
+        method.returning.type
+      )}</code>${
+        method.returning.doc
+          ? ` \u2014 ${escapeHtml(renderDocBlockText(method.returning.doc))}`
+          : ''
+      }</div>`
     );
   }
-  if (method.exceptions.length > 0) parts.push(renderExceptionsList(method.exceptions));
+  if (method.exceptions.length > 0)
+    parts.push(renderExceptionsList(method.exceptions));
 
   return parts.join('\n');
 }
@@ -400,7 +428,7 @@ function renderParametersTable(params: readonly Parameter[]): string {
         `<tr><td><code>${escapeHtml(p.name)}</code></td>` +
         `<td>${escapeHtml(p.direction)}</td>` +
         `<td><code>${escapeHtml(p.type)}</code></td>` +
-        `<td>${p.doc ? escapeHtml(renderDocBlockText(p.doc)) : ''}</td></tr>`,
+        `<td>${p.doc ? escapeHtml(renderDocBlockText(p.doc)) : ''}</td></tr>`
     )
     .join('');
   return `
@@ -413,7 +441,9 @@ function renderParametersTable(params: readonly Parameter[]): string {
 }
 
 function renderExceptionsList(exs: readonly { name: string }[]): string {
-  const items = exs.map((e) => `<li><code>${escapeHtml(e.name)}</code></li>`).join('');
+  const items = exs
+    .map((e) => `<li><code>${escapeHtml(e.name)}</code></li>`)
+    .join('');
   return `<h4>Exceptions</h4><ul>${items}</ul>`;
 }
 
@@ -427,7 +457,7 @@ function renderFieldsTable(fields: readonly TypeRef[]): string {
       // was a copy/paste bug.
       (f) =>
         `<tr><td><code>${escapeHtml(f.name)}</code></td>` +
-        `<td>${escapeHtml(f.kind)}</td></tr>`,
+        `<td>${escapeHtml(f.kind)}</td></tr>`
     )
     .join('');
   return `
@@ -452,7 +482,10 @@ function renderFieldsTable(fields: readonly TypeRef[]): string {
  * rendered through {@link renderDocBlockText}, which yields just inline text.
  */
 /** Render a DocBlock, optionally filtering tags out via `tagFilter`. */
-function renderDocBlockFiltered(doc: DocBlock | undefined, tagFilter: (t: Tag) => boolean): string {
+function renderDocBlockFiltered(
+  doc: DocBlock | undefined,
+  tagFilter: (t: Tag) => boolean
+): string {
   if (doc === undefined) return '';
   const parts: string[] = [];
   parts.push(`<p class="lead">${escapeHtml(doc.summary)}</p>`);
@@ -485,7 +518,9 @@ export function renderDocBlock(doc: DocBlock | undefined): string {
  * are surfaced.
  */
 export function renderDocBlockText(doc: DocBlock): string {
-  const head = doc.description ? `${doc.summary} \u2014 ${doc.description}` : doc.summary;
+  const head = doc.description
+    ? `${doc.summary} \u2014 ${doc.description}`
+    : doc.summary;
   return head;
 }
 
@@ -498,22 +533,34 @@ function renderTag(tag: Tag): string {
 <table>
 <thead><tr><th>Name</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td><code>${escapeHtml(tag.name)}</code></td><td>${escapeHtml(tag.description)}</td></tr>
+<tr><td><code>${escapeHtml(tag.name)}</code></td><td>${escapeHtml(
+        tag.description
+      )}</td></tr>
 </tbody>
 </table>`;
     }
     case 'return':
-      return `<div class="return-callout"><strong>Returns</strong> ${escapeHtml(tag.description)}</div>`;
+      return `<div class="return-callout"><strong>Returns</strong> ${escapeHtml(
+        tag.description
+      )}</div>`;
     case 'raising': {
-      const desc = tag.description ? ` \u2014 ${escapeHtml(tag.description)}` : '';
-      return `<p><strong>Raises</strong> <code>${escapeHtml(tag.name)}</code>${desc}</p>`;
+      const desc = tag.description
+        ? ` \u2014 ${escapeHtml(tag.description)}`
+        : '';
+      return `<p><strong>Raises</strong> <code>${escapeHtml(
+        tag.name
+      )}</code>${desc}</p>`;
     }
     case 'see': {
       const target = kebabCase(tag.target);
-      return `<p><strong>See:</strong> <a href="${escapeHtml(target)}.html"><code>${escapeHtml(tag.target)}</code></a></p>`;
+      return `<p><strong>See:</strong> <a href="${escapeHtml(
+        target
+      )}.html"><code>${escapeHtml(tag.target)}</code></a></p>`;
     }
     case 'custom':
-      return `<p><strong>@${escapeHtml(tag.name)}</strong> ${escapeHtml(tag.body)}</p>`;
+      return `<p><strong>@${escapeHtml(tag.name)}</strong> ${escapeHtml(
+        tag.body
+      )}</p>`;
     default: {
       // Exhaustiveness guard — if a new tag kind is added we want a
       // typecheck failure, not a silent skip.
@@ -537,11 +584,18 @@ const KIND_LABELS = {
   structure: 'Structures',
 } as const;
 
-function cssKind(obj: AbapObject): keyof typeof KIND_LABELS {
-  return obj.kind;
-}
+const BADGE_CSS_KIND: Record<AbapObject['kind'], string> = {
+  class: 'class',
+  interface: 'interface',
+  'function-module': 'fm',
+  program: 'program',
+  table: 'table',
+  structure: 'structure',
+};
 
-function groupByKind(objects: readonly AbapObject[]): Record<keyof typeof KIND_LABELS, AbapObject[]> {
+function groupByKind(
+  objects: readonly AbapObject[]
+): Record<keyof typeof KIND_LABELS, AbapObject[]> {
   const out: Record<keyof typeof KIND_LABELS, AbapObject[]> = {
     class: [],
     interface: [],

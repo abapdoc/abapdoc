@@ -6,10 +6,10 @@
 
 ## TL;DR
 
-| PR | Repo | Title | HEAD | Date |
-| --- | --- | --- | --- | --- |
-| #1 | abapdoc/abapdoc | feat(v0): three-layer architecture with extraction/model/rendering | `575a9a3` | 2026-07-02 |
-| #1 | ThePlenkov/abapdoc-1 | (mirror) | `575a9a3` | 2026-07-02 |
+| PR  | Repo                 | Title                                                              | HEAD      | Date       |
+| --- | -------------------- | ------------------------------------------------------------------ | --------- | ---------- |
+| #1  | abapdoc/abapdoc      | feat(v0): three-layer architecture with extraction/model/rendering | `575a9a3` | 2026-07-02 |
+| #1  | ThePlenkov/abapdoc-1 | (mirror)                                                           | `575a9a3` | 2026-07-02 |
 
 The fork PR is the agent-fleet target; the upstream PR is the canonical source.
 
@@ -23,7 +23,7 @@ on branch task/02-renderer-registry.
 
 ## State
 
-- **`main` HEAD (origin/main = abapdoc/abapdoc):** `0a7d27d` — *nx.json* (pre-v0).
+- **`main` HEAD (origin/main = abapdoc/abapdoc):** `0a7d27d` — _nx.json_ (pre-v0).
   The v0 work is on `feature/v0-architecture` (3 commits: v0 + 2 /act rounds + 1
   /act round-3 = 4 total, only 1 v0 commit and 3 /act commits shown in the
   diff summary because some /act rounds share a base).
@@ -100,12 +100,12 @@ abapdoc/
 
 ## What landed in /act rounds (PR #1, 3 follow-up commits)
 
-| Commit | Theme |
-| --- | --- |
-| `1f41423` | Extractor hardening: XXE disabled on XMLParser, drop `globalThis.__debug_extractor`, DDIC kind derived from filename, fix `objects` mapping in extract function |
-| `57359dd` | Parser/model: DocBlock `sourceLocation.file` recursive stamping, packaging paths fixed, duplicate nx.targets.build removed, MDX XSS escape, endLine invariant, TypeRef kind+fields invariant, description column in render tables |
+| Commit    | Theme                                                                                                                                                                                                                              |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `1f41423` | Extractor hardening: XXE disabled on XMLParser, drop `globalThis.__debug_extractor`, DDIC kind derived from filename, fix `objects` mapping in extract function                                                                    |
+| `57359dd` | Parser/model: DocBlock `sourceLocation.file` recursive stamping, packaging paths fixed, duplicate nx.targets.build removed, MDX XSS escape, endLine invariant, TypeRef kind+fields invariant, description column in render tables  |
 | `f5273c1` | Renderers + parser correctness: HTML Reference column duplicate removed, returns dedup, SECTION visibility tracking, FM direction tracking, FM `*"` marker stripping, `tokenizeStatement` paren splitting, CI workflow permissions |
-| `575a9a3` | Cubic P0 SECTION handler ordering bug + class-vs-scope visibility split, DDIC ROLLNAME/DATATYPE capture, extractor parse-error resilience, fast-xml-parser pinned |
+| `575a9a3` | Cubic P0 SECTION handler ordering bug + class-vs-scope visibility split, DDIC ROLLNAME/DATATYPE capture, extractor parse-error resilience, fast-xml-parser pinned                                                                  |
 
 Cumulative review-thread resolution: 78 of 78 (100%). 0 threads open.
 
@@ -146,7 +146,7 @@ PATCHER → VERIFIER → REVIEWER → iterate → commit → /act → merge
 - **Contract doc:** `docs/agent-tasks/02-renderer-registry.md`
 - **Branch:** `task/02-renderer-registry` (already created off `origin/main`)
 - **RED scaffold:** `packages/abapdoc-renderer-registry/src/registry.spec.ts`
-  + `packages/abapdoc-renderer-registry/src/registry.ts` (stub)
+  - `packages/abapdoc-renderer-registry/src/registry.ts` (stub)
 - **Read first:** `docs/handoff/2026-07-02-subagent-01-complete.md` +
   `docs/lessons-learned.md` + `docs/agent-tasks/02-renderer-registry.md`
 - **Verification:**
@@ -157,7 +157,7 @@ PATCHER → VERIFIER → REVIEWER → iterate → commit → /act → merge
 - **Forbidden:** new third-party dependencies; touching parser/extractor;
   rewriting built-ins; removing the ternary chain in CLI without replacement.
 - **Settlement rules:** keep the public API of `renderHtml / renderMdx /
-  renderJson` unchanged. The registry is additive — renderers register
+renderJson` unchanged. The registry is additive — renderers register
   themselves at startup; CLI reads from `getRenderer(format)` instead of
   the ternary chain.
 - **Likely pitfalls:**

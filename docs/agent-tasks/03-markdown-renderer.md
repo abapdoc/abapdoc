@@ -17,6 +17,7 @@ without JSX artefacts.
 
 The renderer registry introduced in PR #2 means adding this format
 requires **no CLI changes** beyond:
+
 1. Adding `'markdown'` to `SUPPORTED_FORMATS` in
    `packages/abapdoc-renderer-registry/src/registry.ts`
 2. Creating the new package
@@ -27,7 +28,10 @@ requires **no CLI changes** beyond:
 Mirror the structure of the existing renderers. Public API:
 
 ```typescript
-export function render(model: DocumentationModel, options?: RenderOptions): RenderResult;
+export function render(
+  model: DocumentationModel,
+  options?: RenderOptions
+): RenderResult;
 ```
 
 Where `RenderOptions` and `RenderResult` match the other renderers
@@ -48,15 +52,15 @@ as a dependency and its `tsconfig.json` references the registry's
 ## Required tests (5+)
 
 1. `renders a class object to a markdown file with a heading and
-   a description`
+a description`
 2. `renders a function module to a markdown file with parameters
-   and exceptions`
+and exceptions`
 3. `renders a table to a markdown file with a GFM fields table`
 4. `emits one file per AbapObject, no extras`
 5. `registers itself as 'markdown' on import (verifiable by
-   importing the package and calling getRenderer('markdown'))`
+importing the package and calling getRenderer('markdown'))`
 6. (optional) `escapes markdown-significant characters in DocBlock
-   descriptions (e.g. pipes, asterisks)`
+descriptions (e.g. pipes, asterisks)`
 
 ## File scope (allowed)
 
@@ -88,7 +92,7 @@ as a dependency and its `tsconfig.json` references the registry's
   kebab-cased object name (same convention as HTML/MDX):
   `zcl-pet-service.md`.
 - Pure GFM Markdown: `#` headings, `| col | col |` tables,
-  `-` bullet lists, `` `code` `` inline, fenced ``` ```code``` ``` blocks.
+  `-` bullet lists, `` `code` `` inline, fenced ` `code` ` blocks.
   No JSX, no frontmatter (MDX has those; markdown doesn't).
 - Each file has a single H1 heading with the object name, an H2
   badge-style subheading with the kind, then the DocBlock summary

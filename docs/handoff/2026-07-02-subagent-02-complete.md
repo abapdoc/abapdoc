@@ -6,9 +6,9 @@
 
 ## TL;DR
 
-| PR | Repo | Title | HEAD | Date |
-| --- | --- | --- | --- | --- |
-| #2 | abapdoc/abapdoc | feat(renderer-registry): self-registering renderer registry | `902f0fa` | 2026-07-02 |
+| PR  | Repo            | Title                                                       | HEAD      | Date       |
+| --- | --------------- | ----------------------------------------------------------- | --------- | ---------- |
+| #2  | abapdoc/abapdoc | feat(renderer-registry): self-registering renderer registry | `902f0fa` | 2026-07-02 |
 
 The contract from `docs/agent-tasks/02-renderer-registry.md` is fully
 implemented. The CLI's hardcoded ternary chain is gone; renderers
@@ -159,18 +159,18 @@ node packages/abapdoc-cli/dist/index.js build \
 Full test matrix (no `--skip-nx-cache` not used in this verification;
 per-package test count):
 
-| Package | Tests |
-| --- | --- |
-| `abapdoc-model` | 20 |
-| `abapdoc-parser` | 6 |
-| `abapdoc-extractor` | 2 |
-| `abapdoc-renderer-json` | 15 |
-| `abapdoc-renderer-html` | 16 |
-| `abapdoc-renderer-mdx` | 23 |
-| `abapdoc-renderer-registry` | 7 |
-| `abapdoc-cli` | 4 |
-| `abapdoc-starlight` | (skipped, unrelated) |
-| **Total** | **93** (was 85) |
+| Package                     | Tests                |
+| --------------------------- | -------------------- |
+| `abapdoc-model`             | 20                   |
+| `abapdoc-parser`            | 6                    |
+| `abapdoc-extractor`         | 2                    |
+| `abapdoc-renderer-json`     | 15                   |
+| `abapdoc-renderer-html`     | 16                   |
+| `abapdoc-renderer-mdx`      | 23                   |
+| `abapdoc-renderer-registry` | 7                    |
+| `abapdoc-cli`               | 4                    |
+| `abapdoc-starlight`         | (skipped, unrelated) |
+| **Total**                   | **93** (was 85)      |
 
 ## CI state
 
@@ -200,6 +200,7 @@ package has no build target, the typecheck fails with
 `TS6305: Output file '...dist/index.d.ts' has not been built`.
 
 **Patterns:**
+
 - Add a `build` target to the registry package's `project.json`
   that emits `.d.ts` (mirror the model's `@nx/js:tsc` setup).
 - Include `tsconfig.lib.json` and `tsconfig.spec.json` in the
@@ -227,6 +228,7 @@ a renderer the CLI will never dispatch to. The bug surfaces as
 typo.
 
 **Patterns:**
+
 - Export a `SUPPORTED_FORMATS` const from the registry.
 - `registerRenderer` throws if `format` is not in
   `SUPPORTED_FORMATS` (or is empty).
@@ -246,6 +248,7 @@ If the CLI uses `getRenderer(fmt)` but never imports
 fails with "No renderer registered for format 'html'".
 
 **Patterns:**
+
 - Side-effect imports (`import '@abapdoc/renderer-html'`) in
   the CLI's entry point keep the wiring explicit.
 - Document the side effect in a comment near the import.
@@ -275,9 +278,9 @@ non-obvious; a comment is needed.
   self-register via `registerRenderer({ format: 'markdown', render })`.
 - **Verification:**
   - `npx nx run-many -t test,build,typecheck,lint -p
-    abapdoc-renderer-markdown abapdoc-cli --skip-nx-cache`
+abapdoc-renderer-markdown abapdoc-cli --skip-nx-cache`
   - `rm -rf /tmp/abapdoc-out && node packages/abapdoc-cli/dist/index.js
-    build --src e2e/petstore --out /tmp/abapdoc-out --format all`
+build --src e2e/petstore --out /tmp/abapdoc-out --format all`
   - Also: `--format markdown` alone should produce only `.md` files
     (no `.html`, no `.mdx`, no `model.json`).
 - **Likely pitfalls:**

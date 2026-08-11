@@ -65,7 +65,7 @@ export interface RenderResult {
  */
 export function render(
   model: DocumentationModel,
-  _options: RenderOptions = {},
+  _options: RenderOptions = {}
 ): RenderResult {
   // Cheap insurance at the model boundary.
   DocumentationModelSchema.parse(model);
@@ -120,13 +120,15 @@ export function kebabCase(name: string): string {
  * in an HTML context here).
  */
 export function escapeMarkdown(value: string): string {
-  return value
-    // Pipes inside table cells must be escaped or they break the row.
-    .replace(/\|/g, '\\|')
-    // Newlines inside table cells must be replaced with `<br>` for GFM.
-    .replace(/\r?\n/g, '<br>')
-    // Inline backticks would prematurely close a <code> span — escape them.
-    .replace(/`/g, '\\`');
+  return (
+    value
+      // Pipes inside table cells must be escaped or they break the row.
+      .replace(/\|/g, '\\|')
+      // Newlines inside table cells must be replaced with `<br>` for GFM.
+      .replace(/\r?\n/g, '<br>')
+      // Inline backticks would prematurely close a <code> span — escape them.
+      .replace(/`/g, '\\`')
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -168,17 +170,18 @@ function renderObject(obj: AbapObject): string {
     kind: obj.kind,
   });
 
-  const body = obj.kind === 'class'
-    ? renderClassBody(obj)
-    : obj.kind === 'interface'
+  const body =
+    obj.kind === 'class'
+      ? renderClassBody(obj)
+      : obj.kind === 'interface'
       ? renderInterfaceBody(obj)
       : obj.kind === 'function-module'
-        ? renderFunctionModuleBody(obj)
-        : obj.kind === 'program'
-          ? renderProgramBody(obj)
-          : obj.kind === 'table'
-            ? renderTableBody(obj)
-            : renderStructureBody(obj);
+      ? renderFunctionModuleBody(obj)
+      : obj.kind === 'program'
+      ? renderProgramBody(obj)
+      : obj.kind === 'table'
+      ? renderTableBody(obj)
+      : renderStructureBody(obj);
 
   return `${frontmatter}\n\n# ${obj.name}\n\n${body}\n`;
 }
@@ -191,7 +194,9 @@ function renderClassBody(cls: Class): string {
   // Inheritance block — Markdown links to other `.mdx` files.
   const bits: string[] = [];
   if (cls.superclass) {
-    bits.push(`Extends [${cls.superclass}](./${kebabCase(cls.superclass)}.mdx)`);
+    bits.push(
+      `Extends [${cls.superclass}](./${kebabCase(cls.superclass)}.mdx)`
+    );
   }
   if (cls.interfaces && cls.interfaces.length > 0) {
     const links = cls.interfaces
@@ -234,7 +239,8 @@ function renderInterfaceBody(iface: Interface): string {
 function renderFunctionModuleBody(fm: FunctionModule): string {
   const parts: string[] = [];
   parts.push(renderDocBlock(fm.doc));
-  if (fm.parameters.length > 0) parts.push(renderParametersTable(fm.parameters));
+  if (fm.parameters.length > 0)
+    parts.push(renderParametersTable(fm.parameters));
   if (fm.exceptions.length > 0) parts.push(renderExceptionsList(fm.exceptions));
   return parts.join('\n\n');
 }
@@ -270,16 +276,25 @@ function renderMethod(method: Method): string {
   // the method's DocBlock WITHOUT @return tags to avoid producing
   // two duplicate Returns sections (CodeRabbit Major).
   if (method.doc !== undefined) {
-    const tagsForBody = method.returning !== undefined
-      ? method.doc.tags.filter((t) => t.kind !== 'return')
-      : method.doc.tags;
+    const tagsForBody =
+      method.returning !== undefined
+        ? method.doc.tags.filter((t) => t.kind !== 'return')
+        : method.doc.tags;
     parts.push(renderDocBlockWithTags(method.doc, tagsForBody));
   }
-  if (method.parameters.length > 0) parts.push(renderParametersTable(method.parameters));
+  if (method.parameters.length > 0)
+    parts.push(renderParametersTable(method.parameters));
   if (method.returning) {
-    parts.push(`> **Returns** \`${escapeMarkdown(method.returning.type)}\`${method.returning.doc ? ` — ${escapeMarkdown(renderDocBlockInline(method.returning.doc))}` : ''}`);
+    parts.push(
+      `> **Returns** \`${escapeMarkdown(method.returning.type)}\`${
+        method.returning.doc
+          ? ` — ${escapeMarkdown(renderDocBlockInline(method.returning.doc))}`
+          : ''
+      }`
+    );
   }
-  if (method.exceptions.length > 0) parts.push(renderExceptionsList(method.exceptions));
+  if (method.exceptions.length > 0)
+    parts.push(renderExceptionsList(method.exceptions));
 
   return parts.join('\n\n');
 }
@@ -303,7 +318,9 @@ function renderParametersTable(params: readonly Parameter[]): string {
   const rows = params
     .map(
       (p) =>
-        `| \`${escapeMarkdown(p.name)}\` | ${p.direction} | \`${escapeMarkdown(p.type)}\` | ${p.doc ? escapeMarkdown(renderDocBlockInline(p.doc)) : ''} |`,
+        `| \`${escapeMarkdown(p.name)}\` | ${p.direction} | \`${escapeMarkdown(
+          p.type
+        )}\` | ${p.doc ? escapeMarkdown(renderDocBlockInline(p.doc)) : ''} |`
     )
     .join('\n');
   return `#### Parameters\n\n${headers}\n${sep}\n${rows}`;
@@ -319,28 +336,44 @@ interface DocBlockLike {
 }
 
 function renderTypeTable(
-  types: readonly { name: string; visibility?: string; type: string; doc?: DocBlockLike }[],
+  types: readonly {
+    name: string;
+    visibility?: string;
+    type: string;
+    doc?: DocBlockLike;
+  }[]
 ): string {
   const headers = `| Name | Visibility | Type | Description |`;
   const sep = `| --- | --- | --- | --- |`;
   const rows = types
     .map(
       (t) =>
-        `| \`${escapeMarkdown(t.name)}\` | ${t.visibility ?? ''} | \`${escapeMarkdown(t.type)}\` | ${escapeMarkdown(t.doc?.summary ?? '')} |`,
+        `| \`${escapeMarkdown(t.name)}\` | ${
+          t.visibility ?? ''
+        } | \`${escapeMarkdown(t.type)}\` | ${escapeMarkdown(
+          t.doc?.summary ?? ''
+        )} |`
     )
     .join('\n');
   return `${headers}\n${sep}\n${rows}`;
 }
 
 function renderAttributeTable(
-  attrs: readonly { name: string; visibility: string; type: string; doc?: DocBlockLike }[],
+  attrs: readonly {
+    name: string;
+    visibility: string;
+    type: string;
+    doc?: DocBlockLike;
+  }[]
 ): string {
   const headers = `| Name | Visibility | Type | Description |`;
   const sep = `| --- | --- | --- | --- |`;
   const rows = attrs
     .map(
       (a) =>
-        `| \`${escapeMarkdown(a.name)}\` | ${a.visibility} | \`${escapeMarkdown(a.type)}\` | ${escapeMarkdown(a.doc?.summary ?? '')} |`,
+        `| \`${escapeMarkdown(a.name)}\` | ${a.visibility} | \`${escapeMarkdown(
+          a.type
+        )}\` | ${escapeMarkdown(a.doc?.summary ?? '')} |`
     )
     .join('\n');
   return `${headers}\n${sep}\n${rows}`;
@@ -350,7 +383,12 @@ function renderFieldsTable(fields: readonly TypeRef[]): string {
   const headers = `| Name | Kind | Reference |`;
   const sep = `| --- | --- | --- |`;
   const rows = fields
-    .map((f) => `| \`${escapeMarkdown(f.name)}\` | ${f.kind} | \`${escapeMarkdown(f.name)}\` |`)
+    .map(
+      (f) =>
+        `| \`${escapeMarkdown(f.name)}\` | ${f.kind} | \`${escapeMarkdown(
+          f.name
+        )}\` |`
+    )
     .join('\n');
   return `${headers}\n${sep}\n${rows}`;
 }
@@ -400,12 +438,16 @@ export function renderDocBlockInline(doc: DocBlock): string {
 function renderTag(tag: Tag): string {
   switch (tag.kind) {
     case 'parameter': {
-      return `#### Parameters\n\n| Name | Description |\n| --- | --- |\n| \`${escapeMarkdown(tag.name)}\` | ${escapeMarkdown(tag.description)} |`;
+      return `#### Parameters\n\n| Name | Description |\n| --- | --- |\n| \`${escapeMarkdown(
+        tag.name
+      )}\` | ${escapeMarkdown(tag.description)} |`;
     }
     case 'return':
       return `> **Returns** ${escapeMarkdown(tag.description)}`;
     case 'raising': {
-      const desc = tag.description ? ` — ${escapeMarkdown(tag.description)}` : '';
+      const desc = tag.description
+        ? ` — ${escapeMarkdown(tag.description)}`
+        : '';
       return `**Raises** \`${escapeMarkdown(tag.name)}\`${desc}`;
     }
     case 'see': {

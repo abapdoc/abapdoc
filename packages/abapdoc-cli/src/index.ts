@@ -14,8 +14,16 @@
  * formats.
  */
 
-import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, isAbsolute, join, resolve, sep, posix } from 'node:path';
+import { mkdir, realpath, rm, writeFile } from 'node:fs/promises';
+import {
+  dirname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+  sep,
+  posix,
+} from 'node:path';
 
 import { Command } from 'commander';
 import type { DocumentationModel } from '@abapdoc/model';
@@ -46,15 +54,58 @@ function validateFormat(format: string): format is Format {
   return listRenderers().some((r) => r.format === format);
 }
 
-async function runBuild(src: string, outDir: string, format: Format): Promise<number> {
-  const { model } = await extract({ rootDir: resolve(src) });
+async function canonicalizePath(p: string): Promise<string> {
+  const resolved = resolve(p);
+  try {
+    return await realpath(resolved);
+  } catch {
+    // If the target does not exist yet, walk up to the nearest existing
+    // ancestor, resolve any symlinks there, then append the unresolved
+    // suffix. This catches output paths like <symlink-to-src>/generated.
+    let dir = dirname(resolved);
+    while (dir !== dirname(dir)) {
+      try {
+        const realDir = await realpath(dir);
+        return join(realDir, relative(dir, resolved));
+      } catch {
+        dir = dirname(dir);
+      }
+    }
+    return resolved;
+  }
+}
+
+async function runBuild(
+  src: string,
+  outDir: string,
+  format: Format
+): Promise<number> {
+  // Refuse output directories that overlap the source tree so the
+  // cleanup step cannot delete the very files we are about to extract.
+  // Resolve all symlinks and compare canonical paths; filesystems that
+  // are case-insensitive will already be represented by the realpath.
+  const sourceRoot = await canonicalizePath(src);
+  const outputRoot = await canonicalizePath(outDir);
+  if (
+    outputRoot === sourceRoot ||
+    outputRoot.startsWith(sourceRoot + sep) ||
+    sourceRoot.startsWith(outputRoot + sep)
+  ) {
+    throw new Error('Output directory must not overlap source directory');
+  }
+
+  const { model } = await extract({ rootDir: sourceRoot });
   // Validate the model end-to-end before rendering. Surface a clear
   // error if the upstream extractor emits something the schema rejects.
-  const reparsed = DocumentationModelSchema.parse(JSON.parse(JSON.stringify(model)));
+  const reparsed = DocumentationModelSchema.parse(
+    JSON.parse(JSON.stringify(model))
+  );
   // `all` expands to whatever the registry currently knows about. New
   // formats register themselves; this loop picks them up automatically.
   const formats: readonly string[] =
     format === 'all' ? listRenderers().map((r) => r.format) : [format];
+
+  await rm(outDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
 
   // Resolve outDir to an absolute, canonicalised base once. Every
@@ -68,16 +119,20 @@ async function runBuild(src: string, outDir: string, format: Format): Promise<nu
     if (renderer === undefined) {
       throw new Error(
         `No renderer registered for format ${JSON.stringify(fmt)}. ` +
-          `Registered formats: ${listRenderers().map((r) => r.format).join(', ')}`,
+          `Registered formats: ${listRenderers()
+            .map((r) => r.format)
+            .join(', ')}`
       );
     }
     const result = renderer.render(reparsed);
     for (const f of result.files) {
       // Reject '..' segments and absolute paths up-front.
       const segments = f.path.split(posix.sep);
-      if (segments.some((seg) => seg === '..' || seg === '' || isAbsolute(seg))) {
+      if (
+        segments.some((seg) => seg === '..' || seg === '' || isAbsolute(seg))
+      ) {
         throw new Error(
-          `Unsafe renderer path (path traversal?): ${JSON.stringify(f.path)}`,
+          `Unsafe renderer path (path traversal?): ${JSON.stringify(f.path)}`
         );
       }
       const outPath = join(baseOut, ...segments);
@@ -85,7 +140,7 @@ async function runBuild(src: string, outDir: string, format: Format): Promise<nu
       const resolved = resolve(outPath);
       if (!resolved.startsWith(baseOut + sep) && resolved !== baseOut) {
         throw new Error(
-          `Resolved output path escapes base directory: ${resolved} not under ${baseOut}`,
+          `Resolved output path escapes base directory: ${resolved} not under ${baseOut}`
         );
       }
       await mkdir(dirname(resolved), { recursive: true });
@@ -118,12 +173,24 @@ function countObjects(model: DocumentationModel): {
   };
   for (const obj of model.objects) {
     switch (obj.kind) {
-      case 'class': counts.classes++; break;
-      case 'interface': counts.interfaces++; break;
-      case 'function-module': counts.fms++; break;
-      case 'table': counts.tables++; break;
-      case 'program': counts.programs++; break;
-      case 'structure': counts.structures++; break;
+      case 'class':
+        counts.classes++;
+        break;
+      case 'interface':
+        counts.interfaces++;
+        break;
+      case 'function-module':
+        counts.fms++;
+        break;
+      case 'table':
+        counts.tables++;
+        break;
+      case 'program':
+        counts.programs++;
+        break;
+      case 'structure':
+        counts.structures++;
+        break;
     }
   }
   return counts;
@@ -154,11 +221,19 @@ function main(argv: readonly string[]): Promise<number> {
     .description('Extract and render documentation from an abapGit repo.')
     .requiredOption('--src <dir>', 'abapGit-style repo root')
     .requiredOption('--out <dir>', 'output directory for rendered files')
-    .option('--format <fmt>', `output format (one of ${FORMATS.join(', ')})`, 'all')
+    .option(
+      '--format <fmt>',
+      `output format (one of ${FORMATS.join(', ')})`,
+      'all'
+    )
     .action(async (opts: { src: string; out: string; format: string }) => {
       if (!validateFormat(opts.format)) {
         const available = [...listRenderers().map((r) => r.format), 'all'];
-        console.error(`Invalid --format: ${opts.format}. Must be one of ${available.join(', ')}.`);
+        console.error(
+          `Invalid --format: ${opts.format}. Must be one of ${available.join(
+            ', '
+          )}.`
+        );
         process.exit(1);
       }
       try {
@@ -173,7 +248,9 @@ function main(argv: readonly string[]): Promise<number> {
 
   program
     .command('validate')
-    .description('Extract and validate against the documentation model schema. No output written.')
+    .description(
+      'Extract and validate against the documentation model schema. No output written.'
+    )
     .requiredOption('--src <dir>', 'abapGit-style repo root')
     .action(async (opts: { src: string }) => {
       try {
@@ -186,18 +263,23 @@ function main(argv: readonly string[]): Promise<number> {
       }
     });
 
-  return program.parseAsync(argv as string[]).then(() => 0).catch((err) => {
-    console.error(err instanceof Error ? err.message : String(err));
-    return 1;
-  });
+  return program
+    .parseAsync(argv as string[])
+    .then(() => 0)
+    .catch((err) => {
+      console.error(err instanceof Error ? err.message : String(err));
+      return 1;
+    });
 }
 
-void main(process.argv).then((code) => {
-  process.exit(code);
-}).catch((err) => {
-  console.error(err instanceof Error ? err.message : String(err));
-  process.exit(1);
-});
+void main(process.argv)
+  .then((code) => {
+    process.exit(code);
+  })
+  .catch((err) => {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  });
 
 // Force-keep the `sep` import — used implicitly via the path library above
 // for any future per-OS normalisation we may add.
