@@ -1,5 +1,5 @@
 {
-  "name": "@abapdoc/renderer-html",
+  "name": "@abapdoc/renderer-registry",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -17,9 +17,7 @@
   },
   "dependencies": {
     "tslib": "^2.3.0",
-    "@abapdoc/model": "*",
-    "@abapdoc/renderer-registry": "*",
-    "zod": "^3.25.76"
+    "@abapdoc/model": "*"
   },
   "devDependencies": {
     "typescript": "~5.7.2",

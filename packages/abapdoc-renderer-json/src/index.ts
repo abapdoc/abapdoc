@@ -16,6 +16,7 @@
 
 import type { DocumentationModel } from '@abapdoc/model';
 import { DocumentationModelSchema } from '@abapdoc/model';
+import { registerRenderer } from '@abapdoc/renderer-registry';
 
 /** Output filename for the JSON dump. */
 export const MODEL_JSON_PATH = 'model.json' as const;
@@ -41,7 +42,7 @@ export interface RenderResult {
  */
 export function render(
   model: DocumentationModel,
-  _options?: RenderOptions,
+  _options?: RenderOptions
 ): RenderResult {
   // Cheap insurance — the CLI may pass a model straight off disk.
   DocumentationModelSchema.parse(model);
@@ -55,3 +56,13 @@ export function render(
     ],
   };
 }
+
+// ---------------------------------------------------------------------------
+// Registry self-registration
+// ---------------------------------------------------------------------------
+
+// Register this renderer with the format registry on module import.
+// The CLI looks renderers up via `getRenderer('json')` instead of
+// importing `render` directly, so this side-effect is what makes
+// the renderer discoverable.
+registerRenderer({ format: 'json', render });

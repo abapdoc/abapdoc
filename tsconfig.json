@@ -22,6 +22,9 @@
       "path": "./packages/abapdoc-renderer-json"
     },
     {
+      "path": "./packages/abapdoc-renderer-registry"
+    },
+    {
       "path": "./packages/abapdoc-cli"
     },
     {

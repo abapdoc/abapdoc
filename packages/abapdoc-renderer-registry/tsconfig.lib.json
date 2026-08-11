@@ -13,9 +13,6 @@
   "references": [
     {
       "path": "../abapdoc-model/tsconfig.lib.json"
-    },
-    {
-      "path": "../abapdoc-renderer-registry/tsconfig.lib.json"
     }
   ],
   "exclude": [
