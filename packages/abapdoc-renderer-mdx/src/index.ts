@@ -296,7 +296,7 @@ function renderMethod(method: Method): string {
     parts.push(
       `> **Returns** \`${escapeMarkdown(method.returning.type)}\`${
         returnDescription !== undefined
-          ? ` — ${escapeMdxBody(returnDescription)}`
+          ? ` — ${escapeMdxMarkdown(returnDescription)}`
           : ''
       }`
     );
@@ -425,6 +425,17 @@ export function escapeMdxBody(value: string): string {
     .replace(/>/g, '&gt;');
 }
 
+/** Compose MDX-body escaping with Markdown escaping for inline prose.
+ *
+ * Escapes JSX/HTML-significant characters first so MDX doesn't interpret
+ * `{...}` or `<Tag>` as executable markup, then applies Markdown escaping
+ * (pipes, backticks, newlines) so the text remains safe inside blockquotes
+ * and table cells.
+ */
+function escapeMdxMarkdown(value: string): string {
+  return escapeMarkdown(escapeMdxBody(value));
+}
+
 export function renderDocBlock(doc: DocBlock | undefined): string {
   if (!doc) return '';
   const parts: string[] = [];
@@ -451,7 +462,7 @@ function renderTag(tag: Tag): string {
       )}\` | ${escapeMarkdown(tag.description)} |`;
     }
     case 'return':
-      return `> **Returns** ${escapeMdxBody(tag.description)}`;
+      return `> **Returns** ${escapeMdxMarkdown(tag.description)}`;
     case 'raising': {
       const desc = tag.description
         ? ` — ${escapeMarkdown(tag.description)}`

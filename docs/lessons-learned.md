@@ -194,3 +194,71 @@ downstream extraction that expects a `VALUE` keyword separate from a
 **Concrete hit:** commit `f5273c1`. `tokenizeStatement` previously
 didn't split on parens. Adding `(` and `)` unblocked VALUE-wrapper
 extraction in BOTH class and interface parsers with one change.
+
+### Rule 11 (subagent 02). Self-registration needs a buildable dep
+
+**Why it matters:** When a downstream package's TS project
+references your package, the typecheck step of the downstream
+package requires your `dist/index.d.ts` to exist. If your
+package has no build target, the typecheck fails with
+`TS6305: Output file '...dist/index.d.ts' has not been built`.
+
+**Patterns:**
+
+- Add a `build` target to the registry package's `project.json`
+  that emits `.d.ts` (mirror the model's `@nx/js:tsc` setup).
+- Include `tsconfig.lib.json` and `tsconfig.spec.json` in the
+  registry package from day one — the `@nx/js/typescript` Nx
+  plugin uses them to auto-generate `build` / `test` / `lint`
+  targets.
+- Do NOT add a `build` target by hand that conflicts with the
+  plugin's auto-generation — pick one. Plugin generation is
+  preferred (no duplication, picks up tsconfig changes).
+
+**Concrete hit:** `abapdoc-renderer-registry` initially had only
+`typecheck` / `test` / `lint` in `project.json`. The CLI's typecheck
+failed with `TS6305` because the CLI's `tsconfig.lib.json` references
+`../abapdoc-renderer-registry/tsconfig.lib.json` and expects the
+registry's `dist/index.d.ts` to exist.
+
+### Rule 12 (subagent 02). Validate at the registry boundary, not at usage
+
+**Why it matters:** If `registerRenderer` accepts any string,
+typos at the call site (e.g. `format: 'md'`) silently register
+a renderer the CLI will never dispatch to. The bug surfaces as
+"--format md: No renderer registered" at runtime — far from the
+typo.
+
+**Patterns:**
+
+- Export a `SUPPORTED_FORMATS` const from the registry.
+- `registerRenderer` throws if `format` is not in
+  `SUPPORTED_FORMATS` (or is empty).
+- Tests must include both "empty string" and "unknown string"
+  rejection cases.
+
+**Concrete hit:** `registerRenderer rejects a renderer whose format is empty or invalid`
+exercises both cases.
+
+### Rule 13 (subagent 02). Self-registration side-effects must be imported
+
+**Why it matters:** A renderer that calls `registerRenderer` at
+module top level is invisible until something imports the module.
+If the CLI uses `getRenderer(fmt)` but never imports
+`@abapdoc/renderer-html`, the registry is empty and the build
+fails with "No renderer registered for format 'html'".
+
+**Patterns:**
+
+- Side-effect imports (`import '@abapdoc/renderer-html'`) in
+  the CLI's entry point keep the wiring explicit.
+- Document the side effect in a comment near the import.
+- The CLI's `package.json` still lists the renderers as
+  dependencies — don't remove them just because the code now
+  uses the registry.
+
+**Concrete hit:** The CLI originally used named imports
+(`import { render as renderHtml } from ...`) which implicitly
+triggered the registration. After the refactor to side-effect
+imports, the import statement's purpose is non-obvious; a comment
+is needed.

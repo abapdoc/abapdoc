@@ -114,7 +114,7 @@ is preserved.
 ### CLI refactor (`packages/abapdoc-cli/src/index.ts`)
 
 - Replaced the ternary chain at the original lines 39-66 with
-  `getRenderer(fmt)(reparsed)`.
+  `getRenderer(fmt)?.render(reparsed)`.
 - Switched from named imports of `renderJson` / `renderHtml` /
   `renderMdx` to side-effect imports of the three renderer
   modules + a named import of `getRenderer` / `listRenderers`
@@ -156,8 +156,7 @@ node packages/abapdoc-cli/dist/index.js build \
 # 1 tables, 0 programs. Wrote 10 file(s) to /tmp/abapdoc-out.
 ```
 
-Full test matrix (no `--skip-nx-cache` not used in this verification;
-per-package test count):
+Full test matrix (run without `--skip-nx-cache`; per-package test count):
 
 | Package                     | Tests                |
 | --------------------------- | -------------------- |

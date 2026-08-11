@@ -24,7 +24,7 @@ on branch task/02-renderer-registry.
 ## State
 
 - **`main` HEAD (origin/main = abapdoc/abapdoc):** `0a7d27d` — _nx.json_ (pre-v0).
-  The v0 work is on `feature/v0-architecture` (3 commits: v0 + 2 /act rounds + 1
+  The v0 work is on `feature/v0-architecture` (4 commits: v0 + 2 /act rounds + 1
   /act round-3 = 4 total, only 1 v0 commit and 3 /act commits shown in the
   diff summary because some /act rounds share a base).
 - **Branch `feature/v0-architecture`:** `575a9a3` on both upstreams.
@@ -145,8 +145,8 @@ PATCHER → VERIFIER → REVIEWER → iterate → commit → /act → merge
 - **Name:** subagent-02 — Renderer registry abstraction
 - **Contract doc:** `docs/agent-tasks/02-renderer-registry.md`
 - **Branch:** `task/02-renderer-registry` (already created off `origin/main`)
-- **RED scaffold:** `packages/abapdoc-renderer-registry/src/registry.spec.ts`
-  - `packages/abapdoc-renderer-registry/src/registry.ts` (stub)
+- **Scaffold:** `packages/abapdoc-renderer-registry/src/registry.spec.ts`
+  - `packages/abapdoc-renderer-registry/src/registry.ts` (to be implemented by subagent 02)
 - **Read first:** `docs/handoff/2026-07-02-subagent-01-complete.md` +
   `docs/lessons-learned.md` + `docs/agent-tasks/02-renderer-registry.md`
 - **Verification:**

@@ -31,7 +31,7 @@ export interface Renderer {
   render(model: DocumentationModel): { files: RenderedFile[] };
 }
 
-export function registerRenderer(r: Renderer): void;
+export function registerRenderer(r: Renderer): void; // @throws if `r.format` is empty or not in `SUPPORTED_FORMATS`
 export function getRenderer(format: string): Renderer | undefined;
 export function listRenderers(): readonly Renderer[];
 export function unregisterRenderer(format: string): boolean;
@@ -111,8 +111,9 @@ Wrote 10 file(s) to /tmp/abapdoc-out.
 - The new package must be added to `tsconfig.base.json` path mappings
   before `npx nx` will see it.
 - The CLI's current `validateFormat` is a separate string-list check
-  (`FORMATS.includes(format)`). After the refactor it should call
-  `listRenderers().map(r => r.format).includes(format)` instead.
+  (`FORMATS.includes(format)`). After the refactor it should accept the
+  synthetic `'all'` keyword first, then check against
+  `listRenderers().map(r => r.format).includes(format)`.
 
 ## Done when
 

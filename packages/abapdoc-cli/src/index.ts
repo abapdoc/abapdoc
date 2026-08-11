@@ -39,17 +39,21 @@ import '@abapdoc/renderer-json';
 import '@abapdoc/renderer-html';
 import '@abapdoc/renderer-mdx';
 
-type Format = 'html' | 'mdx' | 'json' | 'all';
-
-/** The list of formats the CLI accepts. Includes the synthetic `all`. */
-const FORMATS: readonly Format[] = ['html', 'mdx', 'json', 'all'];
+/**
+ * Runtime list of accepted `--format` values. Derived from the renderer
+ * registry so the CLI help and error messages stay in sync with the
+ * formats that are actually registered.
+ */
+const AVAILABLE_FORMATS = [...listRenderers().map((r) => r.format), 'all'].join(
+  ', '
+);
 
 /**
  * Validate the `--format` value. Accepts any format registered in the
  * renderer registry, plus the synthetic `all` keyword (which expands
  * to every registered format at build time).
  */
-function validateFormat(format: string): format is Format {
+function validateFormat(format: string): boolean {
   if (format === 'all') return true;
   return listRenderers().some((r) => r.format === format);
 }
@@ -78,7 +82,7 @@ async function canonicalizePath(p: string): Promise<string> {
 async function runBuild(
   src: string,
   outDir: string,
-  format: Format
+  format: string
 ): Promise<number> {
   // Refuse output directories that overlap the source tree so the
   // cleanup step cannot delete the very files we are about to extract.
@@ -223,7 +227,7 @@ function main(argv: readonly string[]): Promise<number> {
     .requiredOption('--out <dir>', 'output directory for rendered files')
     .option(
       '--format <fmt>',
-      `output format (one of ${FORMATS.join(', ')})`,
+      `output format (one of ${AVAILABLE_FORMATS})`,
       'all'
     )
     .action(async (opts: { src: string; out: string; format: string }) => {
