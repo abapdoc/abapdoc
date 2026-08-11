@@ -272,9 +272,17 @@ function renderMethod(method: Method): string {
   parts.push(`### ${method.name} _(${method.visibility})_`);
 
   // If the method has a `returning` parameter, the structured doc
-  // already shows its type via the Returns blockquote below. Render
-  // the method's DocBlock WITHOUT @return tags to avoid producing
-  // two duplicate Returns sections (CodeRabbit Major).
+  // shows its type via the Returns blockquote below. Render the method's
+  // DocBlock WITHOUT @return tags to avoid producing two duplicate
+  // Returns sections (CodeRabbit Major). If the structured return doc is
+  // absent, fall back to the @return tag description so the prose is not
+  // silently dropped.
+  const returnTag = method.doc?.tags.find((t) => t.kind === 'return');
+  const returnDescription: string | undefined =
+    method.returning?.doc !== undefined
+      ? renderDocBlockInline(method.returning.doc)
+      : returnTag?.description;
+
   if (method.doc !== undefined) {
     const tagsForBody =
       method.returning !== undefined
@@ -287,8 +295,8 @@ function renderMethod(method: Method): string {
   if (method.returning) {
     parts.push(
       `> **Returns** \`${escapeMarkdown(method.returning.type)}\`${
-        method.returning.doc
-          ? ` — ${escapeMarkdown(renderDocBlockInline(method.returning.doc))}`
+        returnDescription !== undefined
+          ? ` — ${escapeMdxBody(returnDescription)}`
           : ''
       }`
     );
@@ -443,7 +451,7 @@ function renderTag(tag: Tag): string {
       )}\` | ${escapeMarkdown(tag.description)} |`;
     }
     case 'return':
-      return `> **Returns** ${escapeMarkdown(tag.description)}`;
+      return `> **Returns** ${escapeMdxBody(tag.description)}`;
     case 'raising': {
       const desc = tag.description
         ? ` — ${escapeMarkdown(tag.description)}`
