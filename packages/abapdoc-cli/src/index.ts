@@ -37,7 +37,19 @@ async function runBuild(
   outDir: string,
   format: Format
 ): Promise<number> {
-  const { model } = await extract({ rootDir: resolve(src) });
+  // Refuse output directories that overlap the source tree so the
+  // cleanup step cannot delete the very files we are about to extract.
+  const sourceRoot = resolve(src);
+  const outputRoot = resolve(outDir);
+  if (
+    outputRoot === sourceRoot ||
+    outputRoot.startsWith(sourceRoot + sep) ||
+    sourceRoot.startsWith(outputRoot + sep)
+  ) {
+    throw new Error('Output directory must not overlap source directory');
+  }
+
+  const { model } = await extract({ rootDir: sourceRoot });
   // Validate the model end-to-end before rendering. Surface a clear
   // error if the upstream extractor emits something the schema rejects.
   const reparsed = DocumentationModelSchema.parse(

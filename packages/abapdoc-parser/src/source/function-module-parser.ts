@@ -51,10 +51,15 @@ export interface FunctionModuleParseResult {
 
 function inferDirectionFromName(name: string): Parameter['direction'] {
   const prefix = name.slice(0, 3).toLowerCase();
-  if (prefix === 'ev_') return 'exporting';
-  if (prefix === 'cv_') return 'changing';
-  if (prefix === 'tv_') return 'changing';
-  if (prefix === 'iv_') return 'importing';
+  if (prefix === 'ev_' || prefix === 'es_' || prefix === 'et_')
+    return 'exporting';
+  if (
+    prefix === 'cv_' ||
+    prefix === 'cs_' ||
+    prefix === 'ct_' ||
+    prefix === 'tv_'
+  )
+    return 'changing';
   return 'importing';
 }
 
@@ -194,23 +199,30 @@ export function parseFunctionModule(
   }
 
   // Merge parameters from doc tags and legacy blocks. If a legacy entry
-  // carries a concrete TYPE, prefer it over the 'any' placeholder.
+  // carries a concrete TYPE, prefer it over the 'any' placeholder, but
+  // preserve any doc that came from the ABAP Doc tags.
   const paramMap = new Map<string, Parameter>();
   for (const p of parameters) {
-    const existing = paramMap.get(p.name);
+    const key = p.name.toUpperCase();
+    const existing = paramMap.get(key);
     if (
       existing === undefined ||
       (existing.type === 'any' && p.type !== 'any')
     ) {
-      paramMap.set(p.name, p);
+      const merged: Parameter =
+        existing?.doc !== undefined && p.doc === undefined
+          ? { ...p, doc: existing.doc }
+          : p;
+      paramMap.set(key, merged);
     }
   }
 
   const seenExceptions = new Set<string>();
   const mergedExceptions: ExceptionRef[] = [];
   for (const e of exceptions) {
-    if (!seenExceptions.has(e.name)) {
-      seenExceptions.add(e.name);
+    const key = e.name.toUpperCase();
+    if (!seenExceptions.has(key)) {
+      seenExceptions.add(key);
       mergedExceptions.push(e);
     }
   }

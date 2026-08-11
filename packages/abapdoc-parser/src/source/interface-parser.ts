@@ -277,40 +277,96 @@ function sliceToMethod(parent: readonly string[], slice: Slice): Method {
       clauseFirst === 'RETURNING'
     ) {
       const direction = clauseFirst.toLowerCase() as Parameter['direction'];
-      const idx = 1;
-      let paramName = clauseTokens[idx]?.value ?? '';
-      if (
-        paramName.toUpperCase() === 'VALUE' &&
-        clauseTokens[idx + 1]?.value?.startsWith('(')
-      ) {
-        let j = idx + 1;
-        while (
-          j < clauseTokens.length &&
-          !clauseTokens[j]?.value?.endsWith(')')
-        ) {
-          j++;
+      const declTokens = clauseTokens.slice(1);
+
+      const extractParamName = (idx: number): string => {
+        const tok = declTokens[idx]?.value ?? '';
+        if (tok === ')') {
+          // VALUE(name) or REFERENCE(name) wrapper: name is the token
+          // immediately before the closing paren.
+          return declTokens[idx - 1]?.value ?? '';
         }
-        paramName = clauseTokens[j - 1]?.value ?? '';
+        return tok;
+      };
+
+      // Find every TYPE keyword; each marks a parameter declaration.
+      // The parameter name is the token immediately before TYPE.
+      const typePositions: number[] = [];
+      for (let i = 0; i < declTokens.length; i++) {
+        if (declTokens[i]?.value.toUpperCase() === 'TYPE') {
+          typePositions.push(i);
+        }
       }
-      const typeIdx = clauseTokens.findIndex(
-        (t, i2) => i2 > idx && t.value.toUpperCase() === 'TYPE'
-      );
-      const type =
-        typeIdx !== -1 && typeIdx + 1 < clauseTokens.length
-          ? clauseTokens
-              .slice(typeIdx + 1)
-              .map((t) => t.value)
-              .join(' ')
-          : 'any';
-      const parameter: Parameter = { name: paramName, direction, type };
-      const doc = parseDocBlockFromLines(parent, clauseSourceLine + 1, '');
-      if (doc !== undefined) {
-        parameter.doc = doc;
-      }
-      if (direction === 'returning') {
-        returning = parameter;
+
+      const pushParameter = (
+        namePos: number,
+        typePos: number,
+        nextNamePos: number
+      ): void => {
+        const paramName = extractParamName(namePos);
+        const typeParts: string[] = [];
+        for (let k = typePos + 1; k < nextNamePos; k++) {
+          const v = declTokens[k]?.value ?? '';
+          const upper = v.toUpperCase();
+          if (
+            upper === 'OPTIONAL' ||
+            upper === 'READ-ONLY' ||
+            upper === 'DEFAULT' ||
+            isClauseKeyword(v)
+          ) {
+            break;
+          }
+          typeParts.push(v);
+        }
+        const type = typeParts.length > 0 ? typeParts.join(' ') : 'any';
+        const parameter: Parameter = { name: paramName, direction, type };
+        const sourceLine = declTokens[namePos]?.sourceLine ?? clauseSourceLine;
+        const doc = parseDocBlockFromLines(parent, sourceLine, '');
+        if (doc !== undefined) {
+          parameter.doc = doc;
+        }
+        if (direction === 'returning') {
+          returning = parameter;
+        } else {
+          parameters.push(parameter);
+        }
+      };
+
+      if (typePositions.length === 0) {
+        // No TYPE keyword; treat the first token as the parameter name.
+        if (declTokens.length > 0) {
+          const parameter: Parameter = {
+            name: extractParamName(0),
+            direction,
+            type: 'any',
+          };
+          const doc = parseDocBlockFromLines(
+            parent,
+            declTokens[0]?.sourceLine ?? clauseSourceLine,
+            ''
+          );
+          if (doc !== undefined) {
+            parameter.doc = doc;
+          }
+          if (direction === 'returning') {
+            returning = parameter;
+          } else {
+            parameters.push(parameter);
+          }
+        }
       } else {
-        parameters.push(parameter);
+        for (let ti = 0; ti < typePositions.length; ti++) {
+          const typePos = typePositions[ti] ?? 0;
+          const namePos = typePos - 1;
+          const nextTypePos = typePositions[ti + 1] ?? declTokens.length;
+          // For the last declaration the type runs to the end of the clause;
+          // otherwise it stops just before the next parameter name.
+          const nextNamePos =
+            ti === typePositions.length - 1
+              ? declTokens.length
+              : nextTypePos - 1;
+          pushParameter(namePos, typePos, nextNamePos);
+        }
       }
     }
     clauseTokens = [];
