@@ -312,6 +312,8 @@ function sliceToMethod(parent: readonly string[], slice: Slice): Method {
             upper === 'OPTIONAL' ||
             upper === 'READ-ONLY' ||
             upper === 'DEFAULT' ||
+            upper === 'VALUE' ||
+            upper === 'REFERENCE' ||
             isClauseKeyword(v)
           ) {
             break;

@@ -12,7 +12,7 @@
  * work lives in the underlying packages.
  */
 
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve, sep, posix } from 'node:path';
 
 import { Command } from 'commander';
@@ -39,12 +39,26 @@ async function runBuild(
 ): Promise<number> {
   // Refuse output directories that overlap the source tree so the
   // cleanup step cannot delete the very files we are about to extract.
-  const sourceRoot = resolve(src);
-  const outputRoot = resolve(outDir);
+  // Resolve symlinks and normalize case so a symlinked source or output
+  // path cannot bypass a purely lexical check.
+  const sourceRoot = await realpath(resolve(src));
+  let outputRoot: string;
+  try {
+    outputRoot = await realpath(resolve(outDir));
+  } catch {
+    outputRoot = resolve(outDir);
+  }
+
+  const caseInsensitive =
+    process.platform === 'win32' || process.platform === 'darwin';
+  const normalize = (p: string): string =>
+    caseInsensitive ? p.toLowerCase() : p;
+  const srcKey = normalize(sourceRoot);
+  const outKey = normalize(outputRoot);
   if (
-    outputRoot === sourceRoot ||
-    outputRoot.startsWith(sourceRoot + sep) ||
-    sourceRoot.startsWith(outputRoot + sep)
+    outKey === srcKey ||
+    outKey.startsWith(srcKey + sep) ||
+    srcKey.startsWith(outKey + sep)
   ) {
     throw new Error('Output directory must not overlap source directory');
   }
