@@ -94,7 +94,7 @@ describe('CLI — integration', () => {
         ],
         { cwd: join(__dirname, '..', '..', '..') }
       );
-      expect(result.stdout).toMatch(/Rendered \d+ object\(s\)/);
+      expect(result.stdout).toMatch(/Rendered [1-9]\d* object\(s\)/);
       // HTML-specific output must be present.
       const indexStat = await stat(join(outDir, 'index.html'));
       expect(indexStat.isFile()).toBe(true);

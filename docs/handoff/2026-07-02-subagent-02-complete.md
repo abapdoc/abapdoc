@@ -114,7 +114,8 @@ is preserved.
 ### CLI refactor (`packages/abapdoc-cli/src/index.ts`)
 
 - Replaced the ternary chain at the original lines 39-66 with
-  `getRenderer(fmt)?.render(reparsed)`.
+  `getRenderer(fmt)` followed by `renderer.render(reparsed)`, throwing
+  a clear error if no renderer is registered for the requested format.
 - Switched from named imports of `renderJson` / `renderHtml` /
   `renderMdx` to side-effect imports of the three renderer
   modules + a named import of `getRenderer` / `listRenderers`

@@ -146,7 +146,7 @@ PATCHER → VERIFIER → REVIEWER → iterate → commit → /act → merge
 - **Contract doc:** `docs/agent-tasks/02-renderer-registry.md`
 - **Branch:** `task/02-renderer-registry` (already created off `origin/main`)
 - **Scaffold:** `packages/abapdoc-renderer-registry/src/registry.spec.ts`
-  - `packages/abapdoc-renderer-registry/src/registry.ts` (to be implemented by subagent 02)
+  - `packages/abapdoc-renderer-registry/src/registry.ts` (implementation, completed in this PR)
 - **Read first:** `docs/handoff/2026-07-02-subagent-01-complete.md` +
   `docs/lessons-learned.md` + `docs/agent-tasks/02-renderer-registry.md`
 - **Verification:**
