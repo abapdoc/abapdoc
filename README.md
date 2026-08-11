@@ -1,90 +1,89 @@
-# Abapdoc
+# abapdoc
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+> ABAP Docs as never before — a modern, extensible documentation pipeline for
+> ABAP repository objects. Extracts ABAP Doc comments from abapGit-style
+> repos and renders them as HTML, MDX (Astro Starlight / Docusaurus / MkDocs
+> ready), and JSON.
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is almost ready ✨.
+## Why
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/js?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+ABAP Doc is the source of truth for developer-level documentation in
+ABAP, but existing generators are tightly coupled ABAP-only HTML
+producers. `abapdoc` is a clean, layered replacement:
 
-## Finish your CI setup
+- **Extraction** layer is small and pluggable — the file-based
+  extractor is the v0 default; AST/ADT-based extractors slot in
+  later without touching anything else.
+- **Model** is format-independent, defined once with Zod and exported
+  as JSON Schema so non-TypeScript tooling can consume it.
+- **Rendering** has three independent implementations (HTML / MDX /
+  JSON) that consume only the model — no I/O, no extraction logic.
 
-[Click here to finish setting up your workspace!](https://cloud.nx.app/connect/EKGbcsoXtI)
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full design.
 
+## Packages
 
-## Generate a library
+| Package                          | Role                                                                  |
+| -------------------------------- | --------------------------------------------------------------------- |
+| `@abapdoc/model`                 | Zod schemas + inferred types for the documentation model. JSON Schema export for non-TS consumers. |
+| `@abapdoc/parser`                | ABAP source → model. State-machine parser for ABAP Doc tags (`@parameter`, `@return`, `@raising`, …). |
+| `@abapdoc/extractor`             | File-based walker for abapGit-style repos (DDIC XML + ABAP source). |
+| `@abapdoc/renderer-json`         | Model → single `model.json`.                                           |
+| `@abapdoc/renderer-html`         | Model → one `.html` per object + `index.html`. Self-contained inline CSS. |
+| `@abapdoc/renderer-mdx`          | Model → one `.mdx` per object with YAML frontmatter. Markdown tables, no JSX. |
+| `@abapdoc/cli`                   | `abapdoc build` / `abapdoc validate` commands.                        |
+| `@abapdoc/starlight`             | (existing scaffold) Astro Starlight integration for the docs site.   |
 
-```sh
-npx nx g @nx/js:lib packages/pkg1 --publishable --importPath=@my-org/pkg1
-```
-
-## Run tasks
-
-To build the library use:
-
-```sh
-npx nx build pkg1
-```
-
-To run any task with Nx use:
-
-```sh
-npx nx <target> <project-name>
-```
-
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
-
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Versioning and releasing
-
-To version and release the library use
-
-```
-npx nx release
-```
-
-Pass `--dry-run` to see what would happen without actually releasing the library.
-
-[Learn more about Nx release &raquo;](hhttps://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Keep TypeScript project references up to date
-
-Nx automatically updates TypeScript [project references](https://www.typescriptlang.org/docs/handbook/project-references.html) in `tsconfig.json` files to ensure they remain accurate based on your project dependencies (`import` or `require` statements). This sync is automatically done when running tasks such as `build` or `typecheck`, which require updated references to function correctly.
-
-To manually trigger the process to sync the project graph dependencies information to the TypeScript project references, run the following command:
+## Quick start
 
 ```sh
-npx nx sync
+npm install
+npm run build
+npm run abapdoc build --src e2e/petstore --out dist/docs
 ```
 
-You can enforce that the TypeScript project references are always in the correct state when running in CI by adding a step to your CI job configuration that runs the following command:
+Open `dist/docs/index.html` to browse the generated docs.
 
-```sh
-npx nx sync:check
-```
+## Commands
 
-[Learn more about nx sync](https://nx.dev/reference/nx-commands#sync)
+| Command                                  | What it does                                                |
+| ---------------------------------------- | ----------------------------------------------------------- |
+| `npm run build`                          | Build all packages via Nx.                                 |
+| `npm run test`                           | Run vitest across all packages.                             |
+| `npm run typecheck`                      | Type-check all packages via `tsc --noEmit`.                 |
+| `npm run lint`                           | ESLint across the repo.                                     |
+| `npm run abapdoc build --src <dir> --out <dir> [--format html|mdx|json|all]` | Extract and render documentation for the given abapGit repo. |
+| `npm run abapdoc validate --src <dir>`   | Extract and validate against the model schema (no output). |
 
+## Development
 
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+- Build everything: `npm run build`
+- Run the full test suite: `npm test`
+- Type-check: `npm run typecheck`
+- Render the petstore sample to `dist/petstore-docs`:
+  `npm run abapdoc build --src e2e/petstore --out dist/petstore-docs`
 
-## Install Nx Console
+## Architecture
 
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the layering
+rationale, model specification, and extension points (custom tags,
+additional renderers, ADT/AST extractors).
 
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## Contributing
 
-## Useful links
+The v0 deliverable is intentionally small. Most useful contributions:
 
-Learn more:
+1. **Parser improvements** — interface `METHODS:` block comma-splitting,
+   more accurate parameter name extraction, `TYPES: BEGIN OF …` field
+   structure.
+2. **Additional renderers** — e.g. `@abapdoc/renderer-markdown` (plain
+   Markdown, no frontmatter), `@abapdoc/renderer-astro`.
+3. **ADT/AST extractor** — implement `@abapdoc/extractor-adt` that
+   reads from a live SAP system via `@abapify/adt-cli`.
 
-- [Learn more about this workspace setup](https://nx.dev/nx-api/js?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Open a PR; CI runs `npm run build`, `npm test`, `npm run typecheck`,
+and `npm run abapdoc build --src e2e/petstore --out dist/petstore-docs`.
 
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## License
+
+MIT — see [LICENSE](LICENSE).

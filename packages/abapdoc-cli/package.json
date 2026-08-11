@@ -1,0 +1,51 @@
+{
+  "name": "@abapdoc/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "exports": {
+    ".": {
+      "development": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "executor": "@abapdoc/tsdown:build",
+        "outputs": [
+          "{options.outputPath}"
+        ],
+        "options": {
+          "outputPath": "packages/abapdoc-cli/dist",
+          "configFile": "packages/abapdoc-cli/tsdown.config.ts"
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "tslib": "^2.3.0",
+    "@abapdoc/model": "*",
+    "zod": "^3.25.76",
+    "@abapdoc/extractor": "*",
+    "@abapdoc/parser": "*",
+    "@abapdoc/renderer-html": "*",
+    "@abapdoc/renderer-mdx": "*",
+    "@abapdoc/renderer-json": "*",
+    "commander": "*"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.2",
+    "vitest": "^3.0.0"
+  },
+  "bin": {
+    "abapdoc": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsdown --config tsdown.config.ts"
+  }
+}

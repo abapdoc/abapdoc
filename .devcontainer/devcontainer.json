@@ -2,17 +2,20 @@
 // README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
 {
 	"name": "Node.js & TypeScript",
+
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm"
+	// mcr.microsoft.com/devcontainers/typescript-node ships Node 22 (LTS) on Debian bookworm.
+	"image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+
+	// Install workspace dependencies after the container is created so `npm run build`,
+	// `npm run test`, `npm run lint`, `npm run typecheck` are wired end-to-end on day one.
+	"postCreateCommand": "npm install",
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
-
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "yarn install",
 
 	// Configure tool-specific properties.
 	// "customizations": {},

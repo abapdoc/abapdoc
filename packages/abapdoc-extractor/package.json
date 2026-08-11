@@ -1,0 +1,57 @@
+{
+  "name": "@abapdoc/extractor",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "executor": "@nx/js:tsc",
+        "outputs": [
+          "{options.outputPath}"
+        ],
+        "options": {
+          "outputPath": "packages/abapdoc-extractor/dist",
+          "main": "packages/abapdoc-extractor/src/index.ts",
+          "tsConfig": "packages/abapdoc-extractor/tsconfig.lib.json",
+          "rootDir": "packages/abapdoc-extractor/src",
+          "generatePackageJson": false,
+          "assets": [
+            {
+              "input": "./packages/abapdoc-extractor/src",
+              "glob": "**/*.d.ts",
+              "output": "."
+            }
+          ]
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "tslib": "^2.3.0",
+    "@abapdoc/model": "*",
+    "zod": "^3.25.76",
+    "fast-xml-parser": "^5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.2",
+    "vitest": "^3.0.0"
+  },
+  "scripts": {
+    "build:js": "tsdown",
+    "build:dts": "tsc --emitDeclarationOnly --declaration --outDir dist --project tsconfig.lib.json",
+    "build": "npm run build:js && npm run build:dts"
+  }
+}

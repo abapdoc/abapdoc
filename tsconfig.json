@@ -4,6 +4,27 @@
   "files": [],
   "references": [
     {
+      "path": "./packages/abapdoc-model"
+    },
+    {
+      "path": "./packages/abapdoc-parser"
+    },
+    {
+      "path": "./packages/abapdoc-extractor"
+    },
+    {
+      "path": "./packages/abapdoc-renderer-html"
+    },
+    {
+      "path": "./packages/abapdoc-renderer-mdx"
+    },
+    {
+      "path": "./packages/abapdoc-renderer-json"
+    },
+    {
+      "path": "./packages/abapdoc-cli"
+    },
+    {
       "path": "./packages/starlight"
     },
     {

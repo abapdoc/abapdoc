@@ -1,0 +1,25 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "files": [],
+  "include": [],
+  "references": [
+    {
+      "path": "../abapdoc-renderer-mdx"
+    },
+    {
+      "path": "../abapdoc-renderer-html"
+    },
+    {
+      "path": "../abapdoc-renderer-json"
+    },
+    {
+      "path": "../abapdoc-model"
+    },
+    {
+      "path": "./tsconfig.lib.json"
+    },
+    {
+      "path": "./tsconfig.spec.json"
+    }
+  ]
+}

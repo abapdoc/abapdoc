@@ -1,0 +1,64 @@
+{
+  "name": "abapdoc-model",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/abapdoc-model/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "packages/abapdoc-model/dist",
+        "main": "packages/abapdoc-model/src/index.ts",
+        "tsConfig": "packages/abapdoc-model/tsconfig.lib.json",
+        "rootDir": "packages/abapdoc-model/src",
+        "generatePackageJson": false,
+        "assets": [
+          {
+            "input": "./packages/abapdoc-model/src",
+            "glob": "**/*.d.ts",
+            "output": "."
+          },
+          {
+            "input": "./packages/abapdoc-model/src",
+            "glob": "json-schema.json",
+            "output": "."
+          }
+        ]
+      },
+      "dependsOn": [
+        {
+          "target": "dump-json-schema",
+          "params": "forward"
+        }
+      ]
+    },
+    "dump-json-schema": {
+      "executor": "nx:run-commands",
+      "outputs": [
+        "{projectRoot}/src/json-schema.json"
+      ],
+      "options": {
+        "command": "tsx scripts/dump-json-schema.ts",
+        "cwd": "packages/abapdoc-model"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc -p packages/abapdoc-model/tsconfig.lib.json --noEmit"
+      }
+    },
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": ["{workspaceRoot}/coverage/packages/abapdoc-model"],
+      "options": {
+        "configFile": "packages/abapdoc-model/vite.config.ts"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  },
+  "tags": ["scope:model"]
+}
