@@ -24,13 +24,13 @@
  * v0 treats interface methods as `isInterfaceMethod: true`.
  */
 
-import type {
-  Interface,
-  Method,
-  Parameter,
-} from '@abapdoc/model';
+import type { Interface, Method, Parameter } from '@abapdoc/model';
 
-import { keyword, stripTrailingComment, tokenizeStatement } from '../line-utils.js';
+import {
+  keyword,
+  stripTrailingComment,
+  tokenizeStatement,
+} from '../line-utils.js';
 import { parseDocBlockFromLines } from '../doc-block/doc-block-parser.js';
 
 export interface InterfaceParseResult {
@@ -38,7 +38,9 @@ export interface InterfaceParseResult {
   endIndex: number;
 }
 
-export function parseInterface(lines: readonly string[]): InterfaceParseResult | undefined {
+export function parseInterface(
+  lines: readonly string[]
+): InterfaceParseResult | undefined {
   let startIndex = -1;
   let name = '';
   for (let i = 0; i < lines.length; i++) {
@@ -103,7 +105,9 @@ export function parseInterface(lines: readonly string[]): InterfaceParseResult |
   return { intf, endIndex: i };
 }
 
-function parseInterfaceTypeLine(line: string): { name: string; type: string } | undefined {
+function parseInterfaceTypeLine(
+  line: string
+): { name: string; type: string } | undefined {
   const tokens = tokenizeStatement(line);
   if (tokens.length < 2 || tokens[0]?.toUpperCase() !== 'TYPES') {
     return undefined;
@@ -114,7 +118,9 @@ function parseInterfaceTypeLine(line: string): { name: string; type: string } | 
     return { name, type: 'structure' };
   }
   const name = first;
-  const typeIdx = tokens.findIndex((t, idx) => idx > 1 && t.toUpperCase() === 'TYPE');
+  const typeIdx = tokens.findIndex(
+    (t, idx) => idx > 1 && t.toUpperCase() === 'TYPE'
+  );
   if (typeIdx === -1 || typeIdx + 1 >= tokens.length) {
     return { name, type: '' };
   }
@@ -141,13 +147,15 @@ interface MethodsBlockResult {
  */
 function parseMethodsBlock(
   lines: readonly string[],
-  startIndex: number,
+  startIndex: number
 ): MethodsBlockResult {
   const methods: Method[] = [];
   let slice: Slice = { lines: [], sourceLines: [] };
 
   // The METHODS: header may or may not carry the first method name.
-  const headerTokens = tokenizeStatement(stripTrailingComment(lines[startIndex] ?? ''));
+  const headerTokens = tokenizeStatement(
+    stripTrailingComment(lines[startIndex] ?? '')
+  );
   if (headerTokens.length >= 2 && !isClauseKeyword(headerTokens[1])) {
     slice.lines.push(lines[startIndex] ?? '');
     slice.sourceLines.push(startIndex + 1);
@@ -201,7 +209,8 @@ function parseMethodsBlock(
 
 function sliceToMethod(parent: readonly string[], slice: Slice): Method {
   const sourceStart = slice.sourceLines[0] ?? 1;
-  const sourceEnd = slice.sourceLines[slice.sourceLines.length - 1] ?? sourceStart;
+  const sourceEnd =
+    slice.sourceLines[slice.sourceLines.length - 1] ?? sourceStart;
 
   // Pull the method name from the first token of the slice.
   const firstLine = slice.lines[0] ?? '';
@@ -209,7 +218,8 @@ function sliceToMethod(parent: readonly string[], slice: Slice): Method {
   let methodName: string;
   let nameIdx = 1;
   if (
-    (firstTokens[0]?.toUpperCase() === 'METHODS' || firstTokens[0]?.toUpperCase() === 'CLASS-METHODS') &&
+    (firstTokens[0]?.toUpperCase() === 'METHODS' ||
+      firstTokens[0]?.toUpperCase() === 'CLASS-METHODS') &&
     !isClauseKeyword(firstTokens[1])
   ) {
     methodName = firstTokens[1] ?? '';
@@ -223,20 +233,43 @@ function sliceToMethod(parent: readonly string[], slice: Slice): Method {
   let returning: Parameter | undefined;
   const exceptions: Method['exceptions'] = [];
 
+  // Flatten the method slice into a token stream, carrying the 1-based
+  // source line that introduced each token. A clause keyword
+  // (IMPORTING/EXPORTING/CHANGING/RETURNING/RAISING) starts a new clause,
+  // so signatures that split the keyword onto one line and the value
+  // onto the next are handled the same as single-line signatures.
+  const tokens: { value: string; sourceLine: number }[] = [];
   for (let k = 0; k < slice.lines.length; k++) {
-    const line = slice.lines[k] ?? '';
-    const tokens = tokenizeStatement(line);
-    if (tokens.length === 0) {
-      continue;
+    const lineTokens = tokenizeStatement(slice.lines[k] ?? '');
+    const start = k === 0 ? nameIdx : 0;
+    for (let t = start; t < lineTokens.length; t++) {
+      tokens.push({
+        value: lineTokens[t] ?? '',
+        sourceLine: slice.sourceLines[k] ?? sourceStart,
+      });
     }
-    const clauseTokens = k === 0 ? tokens.slice(nameIdx) : tokens;
-    if (clauseTokens.length === 0) {
-      continue;
-    }
-    const sourceLine = slice.sourceLines[k] ?? sourceStart;
-    const doc = parseDocBlockFromLines(parent, sourceLine + 1, '');
+  }
 
-    const clauseFirst = clauseTokens[0]?.toUpperCase();
+  let clauseTokens: typeof tokens = [];
+  let clauseSourceLine = sourceStart;
+
+  const flushClause = (): void => {
+    if (clauseTokens.length === 0) {
+      return;
+    }
+    const clauseFirst = (clauseTokens[0]?.value ?? '').toUpperCase();
+
+    if (clauseFirst === 'RAISING') {
+      for (let m = 1; m < clauseTokens.length; m++) {
+        const tok = clauseTokens[m]?.value ?? '';
+        if (tok.length > 0) {
+          exceptions.push({ name: tok });
+        }
+      }
+      clauseTokens = [];
+      return;
+    }
+
     if (
       clauseFirst === 'IMPORTING' ||
       clauseFirst === 'EXPORTING' ||
@@ -245,20 +278,32 @@ function sliceToMethod(parent: readonly string[], slice: Slice): Method {
     ) {
       const direction = clauseFirst.toLowerCase() as Parameter['direction'];
       const idx = 1;
-      let paramName = clauseTokens[idx] ?? '';
-      if (paramName.toUpperCase() === 'VALUE' && clauseTokens[idx + 1]?.startsWith('(')) {
+      let paramName = clauseTokens[idx]?.value ?? '';
+      if (
+        paramName.toUpperCase() === 'VALUE' &&
+        clauseTokens[idx + 1]?.value?.startsWith('(')
+      ) {
         let j = idx + 1;
-        while (j < clauseTokens.length && !clauseTokens[j]?.endsWith(')')) {
+        while (
+          j < clauseTokens.length &&
+          !clauseTokens[j]?.value?.endsWith(')')
+        ) {
           j++;
         }
-        paramName = clauseTokens[j - 1] ?? '';
+        paramName = clauseTokens[j - 1]?.value ?? '';
       }
-      const typeIdx = clauseTokens.findIndex((t, i2) => i2 > idx && t.toUpperCase() === 'TYPE');
+      const typeIdx = clauseTokens.findIndex(
+        (t, i2) => i2 > idx && t.value.toUpperCase() === 'TYPE'
+      );
       const type =
         typeIdx !== -1 && typeIdx + 1 < clauseTokens.length
-          ? clauseTokens.slice(typeIdx + 1).join(' ')
+          ? clauseTokens
+              .slice(typeIdx + 1)
+              .map((t) => t.value)
+              .join(' ')
           : 'any';
       const parameter: Parameter = { name: paramName, direction, type };
+      const doc = parseDocBlockFromLines(parent, clauseSourceLine + 1, '');
       if (doc !== undefined) {
         parameter.doc = doc;
       }
@@ -267,34 +312,29 @@ function sliceToMethod(parent: readonly string[], slice: Slice): Method {
       } else {
         parameters.push(parameter);
       }
-      continue;
     }
+    clauseTokens = [];
+  };
 
-    if (clauseFirst === 'RAISING') {
-      for (let m = 1; m < clauseTokens.length; m++) {
-        const tok = clauseTokens[m];
-        if (tok !== undefined && tok.length > 0) {
-          exceptions.push({ name: tok });
-        }
-      }
-      continue;
+  for (const token of tokens) {
+    if (isClauseKeyword(token.value)) {
+      flushClause();
+      clauseTokens = [token];
+      clauseSourceLine = token.sourceLine;
+    } else {
+      clauseTokens.push(token);
     }
   }
+  flushClause();
 
   const method: Method = {
     name: methodName,
-    parameters,
+    parameters: parameters.filter((p) => p.name.length > 0),
     exceptions,
     visibility: 'public',
     isInterfaceMethod: true,
     sourceLocation: { file: '', startLine: sourceStart, endLine: sourceEnd },
   };
-  // v0 parser limitation: interface METHODS block doesn't always yield
-  // a meaningful parameter name for RETURNING — emit it only when we
-  // actually captured a non-empty name.
-  // v0 parser limitation: interface METHODS block doesn't always yield
-  // meaningful parameter names — emit only parameters with non-empty names.
-  method.parameters = method.parameters.filter((p) => p.name.length > 0);
   if (returning !== undefined && returning.name.length > 0) {
     method.returning = returning;
   }

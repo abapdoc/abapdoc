@@ -64,7 +64,7 @@ npm run generate:example
 
 The repository includes [`.github/workflows/pages.yml`](.github/workflows/pages.yml),
 which builds the packages, renders the petstore sample as HTML, and deploys it
-to GitHub Pages on every push to `main` or `feature/v0-architecture`.
+to GitHub Pages on every push to `main`.
 
 Enable Pages in **Settings → Pages** and set the source to **GitHub Actions**.
 

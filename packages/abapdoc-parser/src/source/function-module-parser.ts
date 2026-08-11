@@ -29,12 +29,19 @@
  */
 
 import type {
+  DocBlock,
   ExceptionRef,
   FunctionModule,
   Parameter,
+  Tag,
 } from '@abapdoc/model';
 
-import { keyword, stripTrailingComment, tokenizeStatement } from '../line-utils.js';
+import {
+  isAbapDocLine,
+  keyword,
+  stripTrailingComment,
+  tokenizeStatement,
+} from '../line-utils.js';
 import { parseDocBlockFromLines } from '../doc-block/doc-block-parser.js';
 
 export interface FunctionModuleParseResult {
@@ -42,7 +49,49 @@ export interface FunctionModuleParseResult {
   endIndex: number;
 }
 
-export function parseFunctionModule(lines: readonly string[]): FunctionModuleParseResult | undefined {
+function inferDirectionFromName(name: string): Parameter['direction'] {
+  const prefix = name.slice(0, 3).toLowerCase();
+  if (prefix === 'ev_') return 'exporting';
+  if (prefix === 'cv_') return 'changing';
+  if (prefix === 'tv_') return 'changing';
+  if (prefix === 'iv_') return 'importing';
+  return 'importing';
+}
+
+interface ExtractedDocTags {
+  parameters: Parameter[];
+  exceptions: ExceptionRef[];
+  doc: DocBlock;
+}
+
+function extractDocTags(doc: DocBlock): ExtractedDocTags {
+  const parameters: Parameter[] = [];
+  const exceptions: ExceptionRef[] = [];
+  const keptTags: Tag[] = [];
+  for (const tag of doc.tags) {
+    if (tag.kind === 'parameter') {
+      parameters.push({
+        name: tag.name,
+        direction: inferDirectionFromName(tag.name),
+        type: 'any',
+        doc: {
+          summary: tag.description,
+          tags: [],
+          sourceLocation: doc.sourceLocation,
+        },
+      });
+    } else if (tag.kind === 'raising') {
+      exceptions.push({ name: tag.name });
+    } else {
+      keptTags.push(tag);
+    }
+  }
+  return { parameters, exceptions, doc: { ...doc, tags: keptTags } };
+}
+
+export function parseFunctionModule(
+  lines: readonly string[]
+): FunctionModuleParseResult | undefined {
   // Locate `FUNCTION <name>.` header.
   let startIndex = -1;
   let name = '';
@@ -61,14 +110,37 @@ export function parseFunctionModule(lines: readonly string[]): FunctionModulePar
     return undefined;
   }
 
-  // Class-level DocBlock.
-  const doc = parseDocBlockFromLines(lines, startIndex + 1, '');
+  // Function-module doc comments sit immediately after the FUNCTION
+  // header. Collect their extent and parse them by anchoring on the
+  // first non-doc line that follows, so collectDocBlockLines walks
+  // upward over the trailing block.
+  let docEndIndex = startIndex;
+  for (let i = startIndex + 1; i < lines.length; i++) {
+    if (!isAbapDocLine(lines[i] ?? '')) {
+      break;
+    }
+    docEndIndex = i;
+  }
+
+  let doc: DocBlock | undefined;
+  let docParameters: Parameter[] = [];
+  let docExceptions: ExceptionRef[] = [];
+  if (docEndIndex > startIndex) {
+    const anchorLine = docEndIndex + 2; // 1-based line just after the doc block
+    doc = parseDocBlockFromLines(lines, anchorLine, '');
+    if (doc !== undefined) {
+      const extracted = extractDocTags(doc);
+      docParameters = extracted.parameters;
+      docExceptions = extracted.exceptions;
+      doc = extracted.doc;
+    }
+  }
 
   // Walk the body until ENDFUNCTION; collect parameters / exceptions
   // from both the `"*"`-prefixed interface block and from inline
   // ABAP statements (rarely used).
-  const parameters: Parameter[] = [];
-  const exceptions: ExceptionRef[] = [];
+  const parameters: Parameter[] = [...docParameters];
+  const exceptions: ExceptionRef[] = [...docExceptions];
   // Track the current section so parameter lines below IMPORTING /
   // EXPORTING / CHANGING / TABLES inherit the right direction.
   // (CodeRabbit Major + Cubic P1: was hardcoded to 'importing'.)
@@ -82,6 +154,12 @@ export function parseFunctionModule(lines: readonly string[]): FunctionModulePar
 
     if (upper.startsWith('ENDFUNCTION')) {
       break;
+    }
+
+    // The after-header doc block was consumed above; skip it here so
+    // it is not mistaken for a legacy interface section.
+    if (i <= docEndIndex && isAbapDocLine(raw)) {
+      continue;
     }
 
     // Detect `"*` interface lines.
@@ -115,11 +193,33 @@ export function parseFunctionModule(lines: readonly string[]): FunctionModulePar
     }
   }
 
+  // Merge parameters from doc tags and legacy blocks. If a legacy entry
+  // carries a concrete TYPE, prefer it over the 'any' placeholder.
+  const paramMap = new Map<string, Parameter>();
+  for (const p of parameters) {
+    const existing = paramMap.get(p.name);
+    if (
+      existing === undefined ||
+      (existing.type === 'any' && p.type !== 'any')
+    ) {
+      paramMap.set(p.name, p);
+    }
+  }
+
+  const seenExceptions = new Set<string>();
+  const mergedExceptions: ExceptionRef[] = [];
+  for (const e of exceptions) {
+    if (!seenExceptions.has(e.name)) {
+      seenExceptions.add(e.name);
+      mergedExceptions.push(e);
+    }
+  }
+
   const fm: FunctionModule = {
     kind: 'function-module',
     name,
-    parameters,
-    exceptions,
+    parameters: Array.from(paramMap.values()),
+    exceptions: mergedExceptions,
     sourceLocation: { file: '', startLine: startIndex + 1, endLine: i + 1 },
   };
   if (doc !== undefined) {
@@ -144,7 +244,7 @@ type InterfaceLineResult =
  */
 function parseInterfaceLine(
   raw: string,
-  currentDirection: Parameter['direction'] | undefined,
+  currentDirection: Parameter['direction'] | undefined
 ): InterfaceLineResult | undefined {
   const trimmed = raw.replace(/^\s*\*/u, '').trim();
   if (trimmed.length === 0) {
@@ -154,9 +254,16 @@ function parseInterfaceLine(
   // `TABLES` etc. — no value, just the keyword. The caller updates
   // its `currentDirection` based on this header.
   const upper = trimmed.toUpperCase();
-  if (upper === 'IMPORTING' || upper === 'EXPORTING' || upper === 'CHANGING' ||
-      upper === 'TABLES' || upper === 'EXCEPTIONS' || upper === 'LOCAL INTERFACE' ||
-      upper.startsWith('LOCAL INTERFACE') || upper.startsWith('---')) {
+  if (
+    upper === 'IMPORTING' ||
+    upper === 'EXPORTING' ||
+    upper === 'CHANGING' ||
+    upper === 'TABLES' ||
+    upper === 'EXCEPTIONS' ||
+    upper === 'LOCAL INTERFACE' ||
+    upper.startsWith('LOCAL INTERFACE') ||
+    upper.startsWith('---')
+  ) {
     return undefined;
   }
 
@@ -167,7 +274,9 @@ function parseInterfaceLine(
     return undefined;
   }
   const first = tokens[0] ?? '';
-  const typeIdx = tokens.findIndex((t, idx) => idx > 0 && t.toUpperCase() === 'TYPE');
+  const typeIdx = tokens.findIndex(
+    (t, idx) => idx > 0 && t.toUpperCase() === 'TYPE'
+  );
   if (typeIdx !== -1 && typeIdx + 1 < tokens.length) {
     // Fall back to 'importing' if no section has been seen yet (e.g.
     // a parameter declared before any section header). This matches
@@ -194,7 +303,7 @@ interface InlineBlockResult {
 
 function parseInlineInterfaceBlock(
   lines: readonly string[],
-  startIndex: number,
+  startIndex: number
 ): InlineBlockResult {
   const parameters: Parameter[] = [];
   const exceptions: ExceptionRef[] = [];
@@ -267,7 +376,9 @@ function parseInlineInterfaceBlock(
       exceptions.push({ name: first });
       continue;
     }
-    const typeIdx = tokens.findIndex((t, idx) => idx > 0 && t.toUpperCase() === 'TYPE');
+    const typeIdx = tokens.findIndex(
+      (t, idx) => idx > 0 && t.toUpperCase() === 'TYPE'
+    );
     if (typeIdx !== -1 && typeIdx + 1 < tokens.length) {
       const doc = parseDocBlockFromLines(lines, i + 1, '');
       const param: Parameter = {
