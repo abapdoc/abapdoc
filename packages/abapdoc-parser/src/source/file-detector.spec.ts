@@ -47,6 +47,12 @@ describe('firstMeaningfulLine', () => {
     );
   });
 
+  it('handles many unmatched braces in a string template without quadratic slowdown', () => {
+    const braces = '{'.repeat(500);
+    const line = `DATA text = |${braces}|. " trailing`;
+    expect(firstMeaningfulLine([line])).toBe(`DATA text = |${braces}|.`);
+  });
+
   it('does not confuse `}` inside a string literal inside a template expression', () => {
     expect(
       firstMeaningfulLine(["DATA text = |{ 'a } b' }|. \" trailing"])

@@ -130,71 +130,67 @@ function stripLeadingWhitespace(line: string): string {
   return line.replace(/^\s+/, '');
 }
 
-function findMatchingBrace(line: string, start: number): number | undefined {
-  // Scan from the `start` index of an opening `{` to the matching `}`.
-  // Respects `'...'`, `` `...` ``, and `|...|` literals so braces inside
-  // strings / templates do not fool the scanner.
-  const stack: Array<"'" | '`' | '|' | '{'> = ['{'];
-  let i = start + 1;
-  while (i < line.length) {
+function buildBracePairs(line: string): number[] {
+  // Precompute matching `{` -> `}` pairs for the whole line in one lexical
+  // pass. Braces inside `'...'`, `` `...` ``, and `|...|` literals/templates
+  // are ignored, so each line is scanned a constant number of times.
+  const pairs = new Array<number>(line.length).fill(-1);
+  const opens: number[] = [];
+  const stack: Array<"'" | '`' | '|' | '{'> = [];
+
+  for (let i = 0; i < line.length; i += 1) {
     const ch = line[i];
     const top = stack[stack.length - 1];
 
     if (top === "'") {
       if (ch === "'" && line[i + 1] === "'") {
-        i += 2;
+        i += 1;
         continue;
       }
       if (ch === "'") {
         stack.pop();
       }
-      i += 1;
       continue;
     }
 
     if (top === '`') {
       if (ch === '`' && line[i + 1] === '`') {
-        i += 2;
+        i += 1;
         continue;
       }
       if (ch === '`') {
         stack.pop();
       }
-      i += 1;
       continue;
     }
 
     if (top === '|') {
       if (ch === '\\') {
-        i += 2;
+        i += 1;
         continue;
       }
       if (ch === '|') {
         stack.pop();
-        i += 1;
         continue;
       }
       if (ch === '{') {
         stack.push('{');
-        i += 1;
+        opens.push(i);
         continue;
       }
-      i += 1;
       continue;
     }
 
     if (top === '{') {
       if (ch === '}') {
         stack.pop();
-        if (stack.length === 0) {
-          return i;
-        }
-        i += 1;
+        const open = opens.pop()!;
+        pairs[open] = i;
         continue;
       }
       if (ch === '{') {
         stack.push('{');
-        i += 1;
+        opens.push(i);
         continue;
       }
       // Fall through so quotes / templates inside expressions are handled.
@@ -202,22 +198,19 @@ function findMatchingBrace(line: string, start: number): number | undefined {
 
     if (ch === "'") {
       stack.push("'");
-      i += 1;
       continue;
     }
     if (ch === '`') {
       stack.push('`');
-      i += 1;
       continue;
     }
     if (ch === '|') {
       stack.push('|');
-      i += 1;
       continue;
     }
-    i += 1;
   }
-  return undefined;
+
+  return pairs;
 }
 
 function stripComment(line: string): string {
@@ -234,6 +227,7 @@ function stripComment(line: string): string {
   }
 
   const stack: Array<"'" | '`' | '|' | '{'> = [];
+  const bracePairs = buildBracePairs(line);
 
   for (let i = 0; i < line.length; i += 1) {
     const ch = line[i];
@@ -274,7 +268,7 @@ function stripComment(line: string): string {
         // Only treat `{` as the start of an embedded expression if a matching
         // `}` exists on the same line. Otherwise the `{` is literal and a
         // trailing `"` comment on this line could be swallowed.
-        if (findMatchingBrace(line, i) !== undefined) {
+        if (bracePairs[i] !== -1) {
           stack.push('{');
         }
         continue;
@@ -288,7 +282,7 @@ function stripComment(line: string): string {
         continue;
       }
       if (ch === '{') {
-        if (findMatchingBrace(line, i) !== undefined) {
+        if (bracePairs[i] !== -1) {
           stack.push('{');
         }
         continue;
