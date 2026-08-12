@@ -29,13 +29,17 @@ describe('CLI — integration', () => {
         { cwd: join(__dirname, '..', '..', '..') }
       );
       expect(result.stdout).toContain('Rendered');
-      // Check files exist
-      const indexStat = await stat(join(outDir, 'index.html'));
+      // `--format all` writes each format into its own subdirectory so
+      // colliding top-level filenames cannot overwrite each other.
+      const indexStat = await stat(join(outDir, 'html', 'index.html'));
       expect(indexStat.isFile()).toBe(true);
-      const modelStat = await stat(join(outDir, 'model.json'));
+      const modelStat = await stat(join(outDir, 'json', 'model.json'));
       expect(modelStat.isFile()).toBe(true);
       // model.json should parse as JSON
-      const modelRaw = await readFile(join(outDir, 'model.json'), 'utf8');
+      const modelRaw = await readFile(
+        join(outDir, 'json', 'model.json'),
+        'utf8'
+      );
       const model = JSON.parse(modelRaw);
       expect(model.version).toBe('1.0.0');
       expect(model.objects.length).toBeGreaterThanOrEqual(3);

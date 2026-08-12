@@ -222,7 +222,7 @@ describe('@abapdoc/renderer-html', () => {
       expect(names).toContain('reference.html');
 
       for (const obj of sampleModel.objects) {
-        expect(names).toContain(`${objectPagePath(obj)}.html`);
+        expect(names).toContain(`objects/${objectPagePath(obj)}.html`);
       }
       expect(files).toHaveLength(sampleModel.objects.length + 5);
     });
@@ -231,7 +231,7 @@ describe('@abapdoc/renderer-html', () => {
       const { files } = renderSite(sampleModel);
       const classPage = fileByName(
         files,
-        `${kebabCase('zcl_pet_service')}.html`
+        `objects/${kebabCase('zcl_pet_service')}.html`
       );
       const doc = parseHtml(classPage.content);
 
@@ -255,7 +255,7 @@ describe('@abapdoc/renderer-html', () => {
       const { files } = renderSite(sampleModel);
       const classPage = fileByName(
         files,
-        `${kebabCase('zcl_pet_service')}.html`
+        `objects/${kebabCase('zcl_pet_service')}.html`
       );
 
       expect(classPage.content).toContain('&lt;script&gt;');
@@ -265,7 +265,7 @@ describe('@abapdoc/renderer-html', () => {
     it('has outline targets for every outline anchor', () => {
       const { files } = renderSite(sampleModel);
       const findPage = (name: string) =>
-        fileByName(files, `${kebabCase(name)}.html`);
+        fileByName(files, `objects/${kebabCase(name)}.html`);
       const samples: Record<string, string[]> = {
         zcl_pet_service: ['methods'],
         zif_pet_service: ['methods'],

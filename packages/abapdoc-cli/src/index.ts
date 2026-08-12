@@ -129,6 +129,11 @@ async function runBuild(
       );
     }
     const result = renderer.render(reparsed);
+    // When rendering every format, write each into its own subdirectory so
+    // colliding top-level filenames (e.g. html/index.html vs site/index.html)
+    // cannot overwrite one another.
+    const formatOut = format === 'all' ? join(baseOut, fmt) : baseOut;
+    await mkdir(formatOut, { recursive: true });
     for (const f of result.files) {
       // Reject '..' segments and absolute paths up-front.
       const segments = f.path.split(posix.sep);
@@ -139,7 +144,7 @@ async function runBuild(
           `Unsafe renderer path (path traversal?): ${JSON.stringify(f.path)}`
         );
       }
-      const outPath = join(baseOut, ...segments);
+      const outPath = join(formatOut, ...segments);
       // Defence-in-depth: confirm the resolved path is inside baseOut.
       const resolved = resolve(outPath);
       if (!resolved.startsWith(baseOut + sep) && resolved !== baseOut) {

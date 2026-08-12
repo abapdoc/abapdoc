@@ -712,6 +712,7 @@ a:hover { text-decoration: underline; }
 .sidebar summary:hover { background: var(--surface); }
 .sidebar .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: .75rem; }
 .sidebar .toggle-row label { font-size: .85rem; color: var(--muted); }
+.hidden { display: none; }
 .sidebar-toggle { display: none; background: none; border: 1px solid var(--border); border-radius: var(--radius); padding: .4rem; margin-right: .5rem; cursor: pointer; }
 main { grid-column: 2; padding: 2rem 3rem; max-width: 52rem; }
 main h1 { font-size: 2rem; border-bottom: 1px solid var(--border); padding-bottom: .3rem; }
@@ -770,10 +771,11 @@ const SITE_JS = `
       const term = e.target.value.toLowerCase();
       document.querySelectorAll('.sidebar [data-search]').forEach(el => {
         const show = (el.dataset.search || '').toLowerCase().includes(term);
-        el.style.display = show ? '' : 'none';
+        if (show) el.classList.remove('hidden');
+        else el.classList.add('hidden');
       });
       document.querySelectorAll('.sidebar details').forEach(d => {
-        const any = d.querySelector('[data-search]:not([style*="none"])');
+        const any = d.querySelector('[data-search]:not(.hidden)');
         d.open = !!any;
       });
     });
@@ -813,7 +815,7 @@ function objectPackage(obj: AbapObject): string {
   const parts = file.replace(/\\/g, '/').split('/');
   parts.pop();
   if (parts[0] === 'src') parts.shift();
-  return parts.join('/') || 'root';
+  return parts.join('/');
 }
 
 interface PackageNode {
@@ -857,8 +859,10 @@ function siteShell(
     pageTitle?: string;
     outline?: string;
     navTree?: string;
+    rootPrefix?: string;
   } = {}
 ): string {
+  const rootPrefix = opts.rootPrefix ?? '';
   const pageTitle =
     opts.pageTitle ??
     (opts.current && opts.current !== 'home'
@@ -876,23 +880,23 @@ function siteShell(
 <body>
 <header class="site-header">
 <button class="sidebar-toggle" aria-label="Toggle sidebar">≡</button>
-<div class="site-header__brand"><a href="index.html">${escapeHtml(
+<div class="site-header__brand"><a href="${rootPrefix}index.html">${escapeHtml(
     title
   )}</a></div>
 <nav class="site-header__nav" aria-label="Top">
-<a href="index.html" ${
+<a href="${rootPrefix}index.html" ${
     opts.current === 'home' ? 'aria-current="page"' : ''
   }>Home</a>
-<a href="getting-started.html" ${
+<a href="${rootPrefix}getting-started.html" ${
     opts.current === 'getting-started' ? 'aria-current="page"' : ''
   }>Getting Started</a>
-<a href="architecture.html" ${
+<a href="${rootPrefix}architecture.html" ${
     opts.current === 'architecture' ? 'aria-current="page"' : ''
   }>Architecture</a>
-<a href="examples.html" ${
+<a href="${rootPrefix}examples.html" ${
     opts.current === 'examples' ? 'aria-current="page"' : ''
   }>Examples</a>
-<a href="reference.html" ${
+<a href="${rootPrefix}reference.html" ${
     opts.current === 'reference' ? 'aria-current="page"' : ''
   }>Reference</a>
 </nav>
@@ -914,19 +918,50 @@ ${
 </html>`;
 }
 
-function renderNavTree(current: string, tree: PackageNode): string {
-  const top = `<ul class="top-nav"><li><a href="index.html" ${
-    current === 'home' ? 'aria-current="page"' : ''
-  }>Home</a></li><li><a href="getting-started.html" ${
-    current === 'getting-started' ? 'aria-current="page"' : ''
-  }>Getting Started</a></li><li><a href="architecture.html" ${
-    current === 'architecture' ? 'aria-current="page"' : ''
-  }>Architecture</a></li><li><a href="examples.html" ${
-    current === 'examples' ? 'aria-current="page"' : ''
-  }>Examples</a></li><li><a href="reference.html" ${
-    current === 'reference' ? 'aria-current="page"' : ''
+function renderNavTree({
+  currentPage,
+  currentObject,
+  tree,
+  rootPrefix = '',
+  objectPrefix = '',
+}: {
+  currentPage?: string;
+  currentObject?: string;
+  tree: PackageNode;
+  rootPrefix?: string;
+  objectPrefix?: string;
+}): string {
+  const top = `<ul class="top-nav"><li><a href="${rootPrefix}index.html" ${
+    currentPage === 'home' ? 'aria-current="page"' : ''
+  }>Home</a></li><li><a href="${rootPrefix}getting-started.html" ${
+    currentPage === 'getting-started' ? 'aria-current="page"' : ''
+  }>Getting Started</a></li><li><a href="${rootPrefix}architecture.html" ${
+    currentPage === 'architecture' ? 'aria-current="page"' : ''
+  }>Architecture</a></li><li><a href="${rootPrefix}examples.html" ${
+    currentPage === 'examples' ? 'aria-current="page"' : ''
+  }>Examples</a></li><li><a href="${rootPrefix}reference.html" ${
+    currentPage === 'reference' ? 'aria-current="page"' : ''
   }>Reference</a></li></ul><h3>Objects</h3>`;
-  return top + renderNestedPackageTree(tree, '', current);
+  return (
+    top + renderNestedPackageTree(tree, objectPrefix, currentObject ?? '', 0)
+  );
+}
+
+function renderObjectLink(
+  o: AbapObject,
+  base: string,
+  current: string
+): string {
+  const path = `${base}${objectPagePath(o)}.html`;
+  const active = current === path ? 'aria-current="page"' : '';
+  const summary = o.doc?.summary ?? '';
+  return `<li data-search="${escapeHtml(
+    `${o.name} ${summary}`
+  )}"><a href="${escapeHtml(path)}" ${active}><code>${escapeHtml(
+    o.name
+  )}</code><span class="badge badge--${BADGE_CSS_KIND[o.kind]}">${escapeHtml(
+    KIND_LABELS[o.kind]
+  )}</span></a></li>`;
 }
 
 function renderNestedPackageTree(
@@ -935,38 +970,21 @@ function renderNestedPackageTree(
   current: string,
   depth = 0
 ): string {
-  if (depth === 0) {
-    const items = Object.values(node.children)
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((child) => renderNestedPackageTree(child, base, current, depth + 1))
-      .join('');
-    return `<ul class="nested-list">${items}</ul>`;
-  }
   const objLinks = node.objects
     .sort((a, b) => a.name.localeCompare(b.name))
-    .map((o) => {
-      const path = `${base}${objectPagePath(o)}.html`;
-      const active = current === path ? 'aria-current="page"' : '';
-      const summary = o.doc?.summary ?? '';
-      return `<li data-search="${escapeHtml(
-        `${o.name} ${summary}`
-      )}"><a href="${escapeHtml(path)}" ${active}><code>${escapeHtml(
-        o.name
-      )}</code><span class="badge badge--${
-        BADGE_CSS_KIND[o.kind]
-      }">${escapeHtml(KIND_LABELS[o.kind])}</span></a></li>`;
-    })
+    .map((o) => renderObjectLink(o, base, current))
     .join('');
+
   const childItems = Object.values(node.children)
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((child) => renderNestedPackageTree(child, base, current, depth + 1))
     .join('');
-  const all = objLinks + childItems;
-  if (depth === 1) {
-    return `<li><details open><summary>${escapeHtml(
-      node.name
-    )}</summary><ul>${all}</ul></details></li>`;
+
+  if (depth === 0) {
+    return `<ul class="nested-list">${objLinks}${childItems}</ul>`;
   }
+
+  const all = objLinks + childItems;
   return `<li><details open><summary>${escapeHtml(
     node.name
   )}</summary><ul>${all}</ul></details></li>`;
@@ -1056,7 +1074,11 @@ function buildObjectOutline(obj: AbapObject): string {
   return items.join('');
 }
 
-function renderHomePage(title: string, navTree: string): string {
+function renderHomePage(
+  title: string,
+  navTree: string,
+  rootPrefix = ''
+): string {
   const body = `
 <div class="hero">
 <h1>${escapeHtml(title)}</h1>
@@ -1076,16 +1098,20 @@ npm run abapdoc -- build --src e2e/petstore --out dist/docs --format html</code>
 <p>Then open <code>dist/docs/index.html</code>.</p>
 <h2>Learn more</h2>
 <ul>
-<li><a href="getting-started.html">Getting Started</a></li>
-<li><a href="architecture.html">Architecture</a></li>
-<li><a href="examples.html">Examples</a></li>
-<li><a href="reference.html">SDK Reference</a></li>
+<li><a href="${rootPrefix}getting-started.html">Getting Started</a></li>
+<li><a href="${rootPrefix}architecture.html">Architecture</a></li>
+<li><a href="${rootPrefix}examples.html">Examples</a></li>
+<li><a href="${rootPrefix}reference.html">SDK Reference</a></li>
 </ul>
 `;
-  return siteShell(title, body, { current: 'home', navTree });
+  return siteShell(title, body, { current: 'home', navTree, rootPrefix });
 }
 
-function renderGettingStartedPage(title: string, navTree: string): string {
+function renderGettingStartedPage(
+  title: string,
+  navTree: string,
+  rootPrefix = ''
+): string {
   const body = `
 <h1>Getting Started</h1>
 <p class="lead">Generate ABAP documentation from an abapGit-style repository in a few commands.</p>
@@ -1099,12 +1125,20 @@ npm run build</code></pre>
 <h2>Validate a repository</h2>
 <pre><code>npm run abapdoc -- validate --src e2e/petstore</code></pre>
 <h2>Next steps</h2>
-<p>Read the <a href="architecture.html">architecture overview</a> or browse the <a href="reference.html">SDK reference</a>.</p>
+<p>Read the <a href="${rootPrefix}architecture.html">architecture overview</a> or browse the <a href="${rootPrefix}reference.html">SDK reference</a>.</p>
 `;
-  return siteShell(title, body, { current: 'getting-started', navTree });
+  return siteShell(title, body, {
+    current: 'getting-started',
+    navTree,
+    rootPrefix,
+  });
 }
 
-function renderArchitecturePage(title: string, navTree: string): string {
+function renderArchitecturePage(
+  title: string,
+  navTree: string,
+  rootPrefix = ''
+): string {
   const body = `
 <h1>Architecture</h1>
 <p class="lead">abapdoc is split into three independent layers: extraction, model and rendering.</p>
@@ -1122,25 +1156,35 @@ function renderArchitecturePage(title: string, navTree: string): string {
 </ul>
 <p>See the <a href="https://github.com/abapdoc/abapdoc">GitHub repository</a> for the full design document and source code.</p>
 `;
-  return siteShell(title, body, { current: 'architecture', navTree });
+  return siteShell(title, body, {
+    current: 'architecture',
+    navTree,
+    rootPrefix,
+  });
 }
 
-function renderExamplesPage(title: string, navTree: string): string {
+function renderExamplesPage(
+  title: string,
+  navTree: string,
+  rootPrefix = ''
+): string {
   const body = `
 <h1>Examples</h1>
 <p class="lead">The <code>e2e/petstore</code> sample is a tiny abapGit repository that demonstrates the generated documentation output.</p>
 <h2>Petstore sample</h2>
 <p>It contains a service interface, a database table, a service class and a utility function module. Run the following command to generate the docs locally:</p>
 <pre><code>npm run abapdoc -- build --src e2e/petstore --out dist/petstore --format html</code></pre>
-<p><a href="reference.html">Browse the generated SDK reference</a> to see the object pages, package grouping, search and right-hand outline in action.</p>
+<p><a href="${rootPrefix}reference.html">Browse the generated SDK reference</a> to see the object pages, package grouping, search and right-hand outline in action.</p>
 `;
-  return siteShell(title, body, { current: 'examples', navTree });
+  return siteShell(title, body, { current: 'examples', navTree, rootPrefix });
 }
 
 function renderReferenceIndexPage(
   model: DocumentationModel,
   title: string,
-  navTree: string
+  navTree: string,
+  rootPrefix = '',
+  objectPrefix = 'objects/'
 ): string {
   const tree = buildPackageTree(model.objects);
   const kindGroups = groupByKind(model.objects);
@@ -1153,9 +1197,9 @@ function renderReferenceIndexPage(
         .sort((a, b) => a.name.localeCompare(b.name))
         .map(
           (o) =>
-            `<a href="${escapeHtml(objectPagePath(o))}.html"><code>${escapeHtml(
-              o.name
-            )}</code></a>`
+            `<a href="${escapeHtml(
+              `${objectPrefix}${objectPagePath(o)}.html`
+            )}"><code>${escapeHtml(o.name)}</code></a>`
         )
         .join('');
       return `<div class="kind-card"><h3>${escapeHtml(
@@ -1173,21 +1217,26 @@ function renderReferenceIndexPage(
 <input type="checkbox" id="view-toggle" aria-label="Toggle flat list">
 </div>
 <div class="ref-nested">
-${renderNestedPackageTree(tree, '', 'reference/index.html')}
+${renderNestedPackageTree(tree, objectPrefix, '')}
 </div>
 <div class="ref-flat" style="display:none">
-${renderFlatPackageTree(tree, '')}
+${renderFlatPackageTree(tree, objectPrefix)}
 </div>
 <h2>By kind</h2>
 <div class="kind-grid">${kindCards}</div>
 `;
-  return siteShell(title, body, { current: 'reference', navTree });
+  return siteShell(title, body, {
+    current: 'reference',
+    navTree,
+    rootPrefix,
+  });
 }
 
 function renderSiteObjectPage(
   obj: AbapObject,
   title: string,
-  navTree: string
+  navTree: string,
+  rootPrefix = '../'
 ): string {
   const kindLabel = KIND_LABELS[obj.kind];
   const badgeClass = BADGE_CSS_KIND[obj.kind];
@@ -1203,6 +1252,7 @@ function renderSiteObjectPage(
     pageTitle: obj.name,
     outline,
     navTree,
+    rootPrefix,
   });
 }
 
@@ -1213,31 +1263,93 @@ export function renderSite(
   DocumentationModelSchema.parse(model);
   const title = options.title ?? 'abapdoc';
   const tree = buildPackageTree(model.objects);
-  const navTree = renderNavTree('', tree);
+  const OBJECT_PREFIX = 'objects/';
+  const navFor = (opts: {
+    currentPage: string;
+    currentObject?: string;
+    rootPrefix: string;
+    objectPrefix: string;
+  }) =>
+    renderNavTree({
+      currentPage: opts.currentPage,
+      currentObject: opts.currentObject,
+      tree,
+      rootPrefix: opts.rootPrefix,
+      objectPrefix: opts.objectPrefix,
+    });
   const files: RenderResult['files'] = [];
 
-  files.push({ path: 'index.html', content: renderHomePage(title, navTree) });
+  files.push({
+    path: 'index.html',
+    content: renderHomePage(
+      title,
+      navFor({
+        currentPage: 'home',
+        rootPrefix: '',
+        objectPrefix: OBJECT_PREFIX,
+      })
+    ),
+  });
   files.push({
     path: 'getting-started.html',
-    content: renderGettingStartedPage(title, navTree),
+    content: renderGettingStartedPage(
+      title,
+      navFor({
+        currentPage: 'getting-started',
+        rootPrefix: '',
+        objectPrefix: OBJECT_PREFIX,
+      })
+    ),
   });
   files.push({
     path: 'architecture.html',
-    content: renderArchitecturePage(title, navTree),
+    content: renderArchitecturePage(
+      title,
+      navFor({
+        currentPage: 'architecture',
+        rootPrefix: '',
+        objectPrefix: OBJECT_PREFIX,
+      })
+    ),
   });
   files.push({
     path: 'examples.html',
-    content: renderExamplesPage(title, navTree),
+    content: renderExamplesPage(
+      title,
+      navFor({
+        currentPage: 'examples',
+        rootPrefix: '',
+        objectPrefix: OBJECT_PREFIX,
+      })
+    ),
   });
   files.push({
     path: 'reference.html',
-    content: renderReferenceIndexPage(model, title, navTree),
+    content: renderReferenceIndexPage(
+      model,
+      title,
+      navFor({
+        currentPage: 'reference',
+        rootPrefix: '',
+        objectPrefix: OBJECT_PREFIX,
+      })
+    ),
   });
 
   for (const obj of model.objects) {
+    const objectPath = `${objectPagePath(obj)}.html`;
     files.push({
-      path: `${objectPagePath(obj)}.html`,
-      content: renderSiteObjectPage(obj, title, navTree),
+      path: `${OBJECT_PREFIX}${objectPath}`,
+      content: renderSiteObjectPage(
+        obj,
+        title,
+        navFor({
+          currentPage: 'reference',
+          currentObject: objectPath,
+          rootPrefix: '../',
+          objectPrefix: '',
+        })
+      ),
     });
   }
 
