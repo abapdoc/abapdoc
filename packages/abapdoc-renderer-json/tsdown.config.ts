@@ -1,24 +1,20 @@
 // tsdown.config.ts
-import { defineConfig } from 'tsdown'
+import { defineConfig } from 'tsdown';
 
 export default defineConfig({
-    entry: ['./src/index.ts'],
-    bundleDts: true,
-    sourcemap: true,
-    dts: true,
-    format: 'esm',
-    outputOptions: {
-        banner: '// tsdown.config.ts'
-    },
-    external: [
-        '@abapdoc/model',
-    ],
-    inputOptions: {
-        resolve: {
-            tsconfigFilename: 'tsconfig.lib.json'
-        }
-    },
-    clean: true,
-    platform: 'node',
-    // ...
-})
+  entry: ['./src/index.ts'],
+  sourcemap: true,
+  format: 'esm',
+  platform: 'node',
+  clean: true,
+  outExtensions: () => ({ js: '.js', dts: '.d.ts' }),
+  tsconfig: 'tsconfig.lib.json',
+  dts: { build: true },
+  outputOptions: {
+    banner: '// tsdown.config.ts',
+  },
+  deps: {
+    neverBundle: ['@abapdoc/model'],
+  },
+  // ...
+});

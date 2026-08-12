@@ -4,27 +4,6 @@
   "include": [],
   "references": [
     {
-      "path": "../abapdoc-renderer-json"
-    },
-    {
-      "path": "../abapdoc-renderer-mdx"
-    },
-    {
-      "path": "../abapdoc-renderer-html"
-    },
-    {
-      "path": "../abapdoc-renderer-registry"
-    },
-    {
-      "path": "../abapdoc-parser"
-    },
-    {
-      "path": "../abapdoc-extractor"
-    },
-    {
-      "path": "../abapdoc-model"
-    },
-    {
       "path": "./tsconfig.lib.json"
     },
     {

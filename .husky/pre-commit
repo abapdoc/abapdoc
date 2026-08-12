@@ -1,2 +1,2 @@
-nx format:check
+nx format:check --uncommitted
 nx affected -t lint --uncommitted

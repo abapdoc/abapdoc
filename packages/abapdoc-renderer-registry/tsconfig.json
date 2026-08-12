@@ -4,9 +4,6 @@
   "include": [],
   "references": [
     {
-      "path": "../abapdoc-model"
-    },
-    {
       "path": "./tsconfig.lib.json"
     },
     {
