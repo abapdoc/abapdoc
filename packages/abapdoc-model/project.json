@@ -35,9 +35,7 @@
     },
     "dump-json-schema": {
       "executor": "nx:run-commands",
-      "outputs": [
-        "{projectRoot}/src/json-schema.json"
-      ],
+      "outputs": ["{projectRoot}/src/json-schema.json"],
       "options": {
         "command": "tsx scripts/dump-json-schema.ts",
         "cwd": "packages/abapdoc-model"
@@ -50,10 +48,10 @@
       }
     },
     "test": {
-      "executor": "@nx/vite:test",
-      "outputs": ["{workspaceRoot}/coverage/packages/abapdoc-model"],
+      "executor": "nx:run-commands",
       "options": {
-        "configFile": "packages/abapdoc-model/vite.config.ts"
+        "command": "vitest run --config {projectRoot}/vite.config.ts",
+        "cwd": "{workspaceRoot}"
       }
     },
     "lint": {

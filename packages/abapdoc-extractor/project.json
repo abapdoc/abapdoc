@@ -10,12 +10,8 @@
         "cwd": "packages/abapdoc-extractor"
       },
       "cache": true,
-      "outputs": [
-        "{projectRoot}/dist"
-      ],
-      "dependsOn": [
-        "^build"
-      ]
+      "outputs": ["{projectRoot}/dist"],
+      "dependsOn": ["^build"]
     },
     "typecheck": {
       "executor": "nx:run-commands",
@@ -24,19 +20,15 @@
       }
     },
     "test": {
-      "executor": "@nx/vite:test",
-      "outputs": [
-        "{workspaceRoot}/coverage/packages/abapdoc-extractor"
-      ],
+      "executor": "nx:run-commands",
       "options": {
-        "configFile": "packages/abapdoc-extractor/vite.config.ts"
+        "command": "vitest run --config {projectRoot}/vite.config.ts",
+        "cwd": "{workspaceRoot}"
       }
     },
     "lint": {
       "executor": "@nx/eslint:lint"
     }
   },
-  "tags": [
-    "scope:extractor"
-  ]
+  "tags": ["scope:extractor"]
 }

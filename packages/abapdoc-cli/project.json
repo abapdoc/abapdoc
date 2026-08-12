@@ -17,19 +17,15 @@
       }
     },
     "test": {
-      "executor": "@nx/vite:test",
-      "outputs": [
-        "{workspaceRoot}/coverage/packages/abapdoc-cli"
-      ],
+      "executor": "nx:run-commands",
       "options": {
-        "configFile": "packages/abapdoc-cli/vite.config.ts"
+        "command": "vitest run --config {projectRoot}/vite.config.ts",
+        "cwd": "{workspaceRoot}"
       }
     },
     "lint": {
       "executor": "@nx/eslint:lint"
     }
   },
-  "tags": [
-    "scope:cli"
-  ]
+  "tags": ["scope:cli"]
 }

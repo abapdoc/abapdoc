@@ -6,5 +6,7 @@ export default defineConfig({
   format: 'esm',
   platform: 'node',
   clean: true,
-  external: [],
+  outExtensions: () => ({ js: '.js', dts: '.d.ts' }),
+  tsconfig: 'tsconfig.lib.json',
+  dts: { build: true },
 });

@@ -11,10 +11,10 @@
       }
     },
     "test": {
-      "executor": "@nx/vite:test",
-      "outputs": ["{workspaceRoot}/coverage/packages/abapdoc-renderer-html"],
+      "executor": "nx:run-commands",
       "options": {
-        "configFile": "packages/abapdoc-renderer-html/vite.config.ts"
+        "command": "vitest run --config {projectRoot}/vite.config.ts",
+        "cwd": "{workspaceRoot}"
       }
     },
     "lint": {
