@@ -132,10 +132,7 @@ function stripLeadingWhitespace(line: string): string {
 
 function stripComment(line: string): string {
   // Strip `*` pseudo-comments (e.g. `*&---...`, `*& Report NAME`)
-  // AND inline ABAP comments after `"`, respecting string literals.
-  // For v0 we accept that a `"` inside `'…'` may be misread. The
-  // detection layer only inspects the first 30 meaningful lines,
-  // and ABAP source rarely has comments on the leading statement.
+  // AND inline ABAP comments after `"`, respecting `'...'` string literals.
   const trimmed = line.trim();
   if (trimmed.startsWith('*')) {
     // Pseudo-comment; remove the whole line so it does not bias
@@ -143,14 +140,23 @@ function stripComment(line: string): string {
     // sees them — only the file-kind detector ignores them.
     return '';
   }
-  const idx = line.indexOf('"');
-  if (idx === -1) {
-    return line;
+
+  let inString = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    if (ch === "'") {
+      // Skip escaped single quotes (`''`) while preserving string state.
+      if (inString && i + 1 < line.length && line[i + 1] === "'") {
+        i += 1;
+        continue;
+      }
+      inString = !inString;
+      continue;
+    }
+    if (ch === '"' && !inString) {
+      return line.slice(0, i).trimEnd();
+    }
   }
-  // Check we're not inside `'…'`.
-  const before = line.slice(0, idx);
-  if ((before.match(/'/g) ?? []).length % 2 === 1) {
-    return line;
-  }
-  return before.trimEnd();
+
+  return line;
 }
