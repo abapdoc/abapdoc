@@ -800,19 +800,26 @@ const SITE_JS = `
 
   const outline = document.querySelector('.outline');
   if (outline) {
+    const setActive = (id: string) => {
+      outline.querySelectorAll('a').forEach(a => a.removeAttribute('aria-current'));
+      const link = [...outline.querySelectorAll('a')].find(a => (a.getAttribute('href') || '').slice(1) === id);
+      if (link) link.setAttribute('aria-current', 'true');
+    };
     const headings = [...document.querySelectorAll('main [id]')].filter(h => /^h[2-3]$/i.test(h.tagName));
     if (headings.length > 0) {
       const obs = new IntersectionObserver(entries => {
         entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            outline.querySelectorAll('a').forEach(a => a.removeAttribute('aria-current'));
-            const link = outline.querySelector('a[href="#' + entry.target.id + '"]');
-            if (link) link.setAttribute('aria-current', 'true');
-          }
+          if (entry.isIntersecting) setActive(entry.target.id);
         });
       }, { rootMargin: '-20% 0px -60% 0px' });
       headings.forEach(h => obs.observe(h));
     }
+    outline.querySelectorAll('a').forEach(a => {
+      a.addEventListener('click', () => setActive((a.getAttribute('href') || '').slice(1)));
+    });
+    const syncHash = () => { if (location.hash) setActive(location.hash.slice(1)); };
+    syncHash();
+    window.addEventListener('hashchange', syncHash);
   }
 })();
 `;
@@ -882,6 +889,7 @@ function siteShell(
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(pageTitle)}</title>
+<link rel="icon" href="data:,">
 <style>${SITE_CSS}</style>
 </head>
 <body>
