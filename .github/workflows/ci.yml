@@ -15,13 +15,27 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node:
+          - name: 22
+            version: 22.x
+          - name: lts
+            version: lts/*
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js LTS
+      - name: Use Node.js ${{ matrix.node.name }}
+        id: setup-node
         uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version: ${{ matrix.node.version }}
+          check-latest: ${{ matrix.node.name == 'lts' }}
+
+      - name: Get Node.js version
+        id: node-version
+        run: echo "version=$(node --version)" >> "$GITHUB_OUTPUT"
 
       - name: Cache npm and Nx
         uses: actions/cache@v4
@@ -29,12 +43,15 @@ jobs:
           path: |
             node_modules
             .nx/cache
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-node-${{ steps.node-version.outputs.version }}-npm-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-npm-
+            ${{ runner.os }}-node-${{ steps.node-version.outputs.version }}-npm-
 
       - name: Install
         run: npm ci --ignore-scripts
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
 
       - name: Build
         run: npm run build
@@ -55,6 +72,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: petstore-docs
+          name: petstore-docs-${{ matrix.node.name }}
           path: dist/petstore-docs
           retention-days: 7
