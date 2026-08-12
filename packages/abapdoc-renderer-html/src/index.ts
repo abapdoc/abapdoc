@@ -108,18 +108,19 @@ registerRenderer({ format: 'site', render: renderSite });
 // ---------------------------------------------------------------------------
 
 /**
- * Kebab-case the ABAP object name.
+ * Create a URL/file slug from an ABAP object name.
  *
- * ABAP convention is `zcl_pet_service`; we map underscores and namespace
- * separators to dashes, collapse consecutive dashes, and lowercase for stable
- * file-system paths and URL fragments.
+ * ABAP convention is `zcl_pet_service`; we map underscores to dashes and
+ * namespace separators (slashes/backslashes) to underscores. This keeps every
+ * object name as a single, flat file-system segment while remaining injective
+ * for underscore vs namespace separator boundaries.
  */
 export function kebabCase(name: string): string {
   return name
-    .replace(/[\\/]/g, '-')
-    .replace(/_/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
+    .replace(/\\/g, '/')
+    .split('/')
+    .map((segment) => segment.replace(/_/g, '-'))
+    .join('_')
     .toLowerCase();
 }
 
