@@ -22,7 +22,12 @@
 
 import type { Program } from '@abapdoc/model';
 
-export type FileKind = 'class' | 'interface' | 'function-module' | 'program' | 'structure';
+export type FileKind =
+  | 'class'
+  | 'interface'
+  | 'function-module'
+  | 'program'
+  | 'structure';
 
 export interface FileKindResult {
   kind: FileKind;
@@ -37,7 +42,10 @@ export function firstMeaningfulLine(lines: readonly string[]): string {
     if (trimmed.length === 0) {
       continue;
     }
-    return trimmed.replace(/\s*"[\s\S]*$/u, '').trim();
+    const quoteIdx = trimmed.indexOf('"');
+    return (
+      quoteIdx === -1 ? trimmed : trimmed.slice(0, quoteIdx).trimEnd()
+    ).trim();
   }
   return '';
 }
@@ -60,7 +68,10 @@ export function detectFileKind(lines: readonly string[]): FileKindResult {
   }
 
   // 1. INTERFACE — first meaningful line starts with `INTERFACE`.
-  if (meaningful.length > 0 && meaningful[0]!.toUpperCase().startsWith('INTERFACE ')) {
+  if (
+    meaningful.length > 0 &&
+    meaningful[0]!.toUpperCase().startsWith('INTERFACE ')
+  ) {
     return { kind: 'interface' };
   }
 
@@ -70,7 +81,9 @@ export function detectFileKind(lines: readonly string[]): FileKindResult {
   const upperLines = meaningful.map((l) => l.toUpperCase());
   if (upperLines[0]?.startsWith('CLASS ')) {
     const hasDefinition = upperLines.some((l) => l.includes(' DEFINITION'));
-    const hasImplementation = upperLines.some((l) => l.includes(' IMPLEMENTATION'));
+    const hasImplementation = upperLines.some((l) =>
+      l.includes(' IMPLEMENTATION')
+    );
     if (hasDefinition || hasImplementation) {
       return { kind: 'class' };
     }
@@ -102,7 +115,9 @@ export function detectFileKind(lines: readonly string[]): FileKindResult {
   }
 
   // 6. TYPES block → structure.
-  if (upperLines.some((l) => l.startsWith('TYPES:') || l.startsWith('TYPES '))) {
+  if (
+    upperLines.some((l) => l.startsWith('TYPES:') || l.startsWith('TYPES '))
+  ) {
     return { kind: 'structure' };
   }
 

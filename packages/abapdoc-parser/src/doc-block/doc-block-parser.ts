@@ -66,7 +66,7 @@ export interface CommentLine {
  */
 export function collectDocBlockLines(
   lines: readonly string[],
-  anchorLine: number,
+  anchorLine: number
 ): CommentLine[] | null {
   if (anchorLine < 1 || anchorLine > lines.length + 1) {
     return null;
@@ -120,7 +120,7 @@ export function splitPipeBlock(text: string): string[] {
   if (current.length > 0) {
     parts.push(current);
   }
-  return parts.map((p) => p.replace(/\s+$/u, ''));
+  return parts.map((p) => p.trimEnd());
 }
 
 /**
@@ -153,12 +153,20 @@ export function parseTag(name: string, body: string): Tag {
       if (spaceIdx === -1) {
         // Only a name was given, no description. The schema requires
         // `description`; emit an empty string so the tag still parses.
-        const tag: ParameterTag = { kind: 'parameter', name: trimmed, description: '' };
+        const tag: ParameterTag = {
+          kind: 'parameter',
+          name: trimmed,
+          description: '',
+        };
         return tag;
       }
       const paramName = trimmed.slice(0, spaceIdx);
       const description = trimmed.slice(spaceIdx + 1).trim();
-      const tag: ParameterTag = { kind: 'parameter', name: paramName, description };
+      const tag: ParameterTag = {
+        kind: 'parameter',
+        name: paramName,
+        description,
+      };
       return tag;
     }
 
@@ -179,7 +187,11 @@ export function parseTag(name: string, body: string): Tag {
       }
       const exceptionName = trimmed.slice(0, spaceIdx);
       const description = trimmed.slice(spaceIdx + 1).trim();
-      const tag: RaisingTag = { kind: 'raising', name: exceptionName, description };
+      const tag: RaisingTag = {
+        kind: 'raising',
+        name: exceptionName,
+        description,
+      };
       return tag;
     }
 
@@ -193,7 +205,11 @@ export function parseTag(name: string, body: string): Tag {
     }
 
     default: {
-      const tag: CustomTag = { kind: 'custom', name: normalisedName, body: trimmedBody };
+      const tag: CustomTag = {
+        kind: 'custom',
+        name: normalisedName,
+        body: trimmedBody,
+      };
       return tag;
     }
   }
@@ -240,7 +256,9 @@ interface DocBlockDraft {
  *   IN_TAG_CONT     --@tag-->      IN_TAG
  *   DESCRIPTION     --blank-->     DESCRIPTION
  */
-export function parseDocBlockLines(lines: readonly CommentLine[]): DocBlockDraft {
+export function parseDocBlockLines(
+  lines: readonly CommentLine[]
+): DocBlockDraft {
   const summaryLines: string[] = [];
   const descriptionLines: string[] = [];
   const tags: Tag[] = [];
@@ -264,7 +282,7 @@ export function parseDocBlockLines(lines: readonly CommentLine[]): DocBlockDraft
     // already holds the trimmed text. When it was multi-line, the
     // `|` markers have been stripped but we kept the segments
     // separated by `\n` — fold them into a single string.
-    const normalised = currentBody.replace(/\s+$/u, '').trim();
+    const normalised = currentBody.trim();
     tags.push(parseTag(currentName, normalised));
     currentName = '';
     currentBody = '';
@@ -311,8 +329,9 @@ export function parseDocBlockLines(lines: readonly CommentLine[]): DocBlockDraft
     // (fallback so we don't drop content).
     if (body.startsWith('|')) {
       if (state === 'in-tag' || state === 'in-tag-cont') {
-        const segment = body.slice(1).replace(/\s+$/u, '');
-        currentBody = currentBody.length === 0 ? segment : currentBody + '\n' + segment;
+        const segment = body.slice(1).trimEnd();
+        currentBody =
+          currentBody.length === 0 ? segment : currentBody + '\n' + segment;
         nextState = 'in-tag-cont';
       } else {
         // Outside a tag: treat as prose after tags.
@@ -406,7 +425,10 @@ export function parseDocBlockLines(lines: readonly CommentLine[]): DocBlockDraft
  * The draft carries the line numbers from the source; the location
  * spans the entire DocBlock.
  */
-export function finaliseDocBlock(draft: DocBlockDraft, filePath: string): DocBlock {
+export function finaliseDocBlock(
+  draft: DocBlockDraft,
+  filePath: string
+): DocBlock {
   const sourceLocation: SourceLocation = {
     file: filePath,
     startLine: draft.startLine,
@@ -433,7 +455,10 @@ export function finaliseDocBlock(draft: DocBlockDraft, filePath: string): DocBlo
     tags: draft.tags,
     sourceLocation,
   };
-  if (draft.description !== NO_DESC && (draft.description as string).length > 0) {
+  if (
+    draft.description !== NO_DESC &&
+    (draft.description as string).length > 0
+  ) {
     block.description = draft.description as string;
   }
   return block;
@@ -463,7 +488,7 @@ function describeTagForSummary(tag: Tag): string {
 export function parseDocBlockFromLines(
   lines: readonly string[],
   anchorLine: number,
-  filePath: string,
+  filePath: string
 ): DocBlock | undefined {
   const commentLines = collectDocBlockLines(lines, anchorLine);
   if (commentLines === null || commentLines.length === 0) {
