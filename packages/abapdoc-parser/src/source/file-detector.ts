@@ -132,7 +132,9 @@ function stripLeadingWhitespace(line: string): string {
 
 function stripComment(line: string): string {
   // Strip `*` pseudo-comments (e.g. `*&---...`, `*& Report NAME`)
-  // AND inline ABAP comments after `"`, respecting `'...'` string literals.
+  // AND inline ABAP comments after `"`.
+  // Respect `'...'` text field literals, `` `...` `` text string literals,
+  // and `|...|` string templates (including `{...}` expressions and `\` escapes).
   const trimmed = line.trim();
   if (trimmed.startsWith('*')) {
     // Pseudo-comment; remove the whole line so it does not bias
@@ -141,20 +143,79 @@ function stripComment(line: string): string {
     return '';
   }
 
-  let inString = false;
+  const stack: Array<"'" | '`' | '|' | '{'> = [];
+
   for (let i = 0; i < line.length; i += 1) {
     const ch = line[i];
-    if (ch === "'") {
-      // Skip escaped single quotes (`''`) while preserving string state.
-      if (inString && i + 1 < line.length && line[i + 1] === "'") {
-        i += 1;
+    const top = stack[stack.length - 1];
+
+    if (top === "'") {
+      if (ch === "'" && line[i + 1] === "'") {
+        i += 1; // escaped '' inside a text field literal
         continue;
       }
-      inString = !inString;
+      if (ch === "'") {
+        stack.pop();
+      }
       continue;
     }
-    if (ch === '"' && !inString) {
+
+    if (top === '`') {
+      if (ch === '`' && line[i + 1] === '`') {
+        i += 1; // escaped `` inside a text string literal
+        continue;
+      }
+      if (ch === '`') {
+        stack.pop();
+      }
+      continue;
+    }
+
+    if (top === '|') {
+      if (ch === '\\') {
+        i += 1; // escape next char inside string template
+        continue;
+      }
+      if (ch === '|') {
+        stack.pop();
+        continue;
+      }
+      if (ch === '{') {
+        stack.push('{');
+        continue;
+      }
+      continue;
+    }
+
+    if (top === '{') {
+      if (ch === '}') {
+        stack.pop();
+        continue;
+      }
+      if (ch === '{') {
+        stack.push('{');
+        continue;
+      }
+      // Other characters inside `{...}` fall through so nested literals are handled.
+    }
+
+    if (ch === '"' && stack.length === 0) {
       return line.slice(0, i).trimEnd();
+    }
+
+    if (ch === "'") {
+      stack.push("'");
+      continue;
+    }
+
+    if (ch === '`') {
+      stack.push('`');
+      continue;
+    }
+
+    if (ch === '|') {
+      stack.push('|');
+      continue;
     }
   }
 
