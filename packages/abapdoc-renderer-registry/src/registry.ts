@@ -56,7 +56,13 @@ export interface RenderedFile {
 }
 
 /** The full set of formats the registry accepts. */
-export const SUPPORTED_FORMATS = ['html', 'mdx', 'json', 'markdown'] as const;
+export const SUPPORTED_FORMATS = [
+  'html',
+  'mdx',
+  'json',
+  'markdown',
+  'site',
+] as const;
 
 /** The string-literal type of a supported format. */
 export type SupportedFormat = (typeof SUPPORTED_FORMATS)[number];

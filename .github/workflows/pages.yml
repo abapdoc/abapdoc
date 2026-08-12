@@ -30,8 +30,8 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Build packages
         run: npm run build
-      - name: Generate ABAP documentation
-        run: npm run abapdoc -- build --src e2e/petstore --out _site --format html
+      - name: Generate ABAP documentation site
+        run: npm run abapdoc -- build --src e2e/petstore --out _site --format site
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

@@ -3,7 +3,8 @@ import { JSDOM } from 'jsdom';
 import { DocumentationModelSchema } from '@abapdoc/model';
 import {
   render,
-  kebabCase,
+  renderSite,
+  objectSlug,
   escapeHtml,
   renderDocBlock,
   objectPagePath,
@@ -26,7 +27,7 @@ describe('@abapdoc/renderer-html', () => {
   it('emits one HTML page per AbapObject plus index.html', () => {
     const { files } = render(sampleModel);
 
-    const names = sampleModel.objects.map((o) => `${kebabCase(o.name)}.html`);
+    const names = sampleModel.objects.map((o) => `${objectSlug(o.name)}.html`);
     for (const path of names) {
       expect(files.some((f) => f.path === path)).toBe(true);
     }
@@ -41,14 +42,18 @@ describe('@abapdoc/renderer-html', () => {
     const doc = parseHtml(index.content);
 
     // Section headings for every kind that has at least one object.
-    const h2s = [...doc.querySelectorAll('h2')].map((h) => h.textContent?.trim());
+    const h2s = [...doc.querySelectorAll('h2')].map((h) =>
+      h.textContent?.trim()
+    );
     expect(h2s).toContain('Classes');
     expect(h2s).toContain('Interfaces');
     expect(h2s).toContain('Function Modules');
     expect(h2s).toContain('Tables');
 
     // Each object has a relative link from the index.
-    const anchors = [...doc.querySelectorAll('ul.kind-list a')].map((a) => a.getAttribute('href'));
+    const anchors = [...doc.querySelectorAll('ul.kind-list a')].map((a) =>
+      a.getAttribute('href')
+    );
     expect(anchors).toContain('zcl-pet-service.html');
     expect(anchors).toContain('zif-pet-service.html');
     expect(anchors).toContain('z-fm-create-pet.html');
@@ -71,7 +76,10 @@ describe('@abapdoc/renderer-html', () => {
 
   it('escapes <script> in DocBlock descriptions (jsdom parsed text check)', () => {
     const { files } = render(sampleModel);
-    const classPage = fileByName(files, `${kebabCase('zcl_pet_service')}.html`);
+    const classPage = fileByName(
+      files,
+      `${objectSlug('zcl_pet_service')}.html`
+    );
     const doc = parseHtml(classPage.content);
 
     // jsdom does NOT auto-inject any <script> for a plain HTML string, so
@@ -80,7 +88,9 @@ describe('@abapdoc/renderer-html', () => {
     expect(scriptEls).toHaveLength(0);
 
     // The raw HTML must contain the entity-escaped form, not the tag.
-    expect(classPage.content).toContain('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
+    expect(classPage.content).toContain(
+      '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'
+    );
     expect(classPage.content).not.toContain('<script>alert');
 
     // innerHTML (the post-parse HTML) also carries the escaped entities —
@@ -102,7 +112,7 @@ describe('@abapdoc/renderer-html', () => {
 
   it('renders parameter tables, return callout, exceptions list, see links and custom tags', () => {
     const { files } = render(sampleModel);
-    const page = fileByName(files, `${kebabCase('zcl_pet_service')}.html`);
+    const page = fileByName(files, `${objectSlug('zcl_pet_service')}.html`);
     const doc = parseHtml(page.content);
 
     // Two `<table>` headings for parameter tables (one per method) plus
@@ -119,7 +129,9 @@ describe('@abapdoc/renderer-html', () => {
     // @see tag renders as <a href> to the kebab-cased page.
     const seeLinks = [...doc.querySelectorAll('a')]
       .map((a) => a.getAttribute('href'))
-      .filter((href): href is string => Boolean(href && href.endsWith('.html')));
+      .filter((href): href is string =>
+        Boolean(href && href.endsWith('.html'))
+      );
     expect(seeLinks).toContain('zpet-s.html');
 
     // Custom tag `@since 1.2.0` surfaces as a definition-style line.
@@ -129,10 +141,12 @@ describe('@abapdoc/renderer-html', () => {
 
   it('renders DDIC field tables for tables and structures', () => {
     const { files } = render(sampleModel);
-    const page = fileByName(files, `${kebabCase('zpet_t')}.html`);
+    const page = fileByName(files, `${objectSlug('zpet_t')}.html`);
     const doc = parseHtml(page.content);
 
-    const headerCells = [...doc.querySelectorAll('thead th')].map((th) => th.textContent?.trim());
+    const headerCells = [...doc.querySelectorAll('thead th')].map((th) =>
+      th.textContent?.trim()
+    );
     expect(headerCells).toEqual(['Name', 'Kind']);
     // Field names from the fixture.
     expect(doc.body.textContent).toContain('client');
@@ -142,7 +156,7 @@ describe('@abapdoc/renderer-html', () => {
 
   it('renders inheritance for classes (superclass + interfaces)', () => {
     const { files } = render(sampleModel);
-    const page = fileByName(files, `${kebabCase('zcl_pet_service')}.html`);
+    const page = fileByName(files, `${objectSlug('zcl_pet_service')}.html`);
     const doc = parseHtml(page.content);
 
     expect(doc.body.textContent).toContain('Extends');
@@ -160,7 +174,11 @@ describe('@abapdoc/renderer-html', () => {
   it('validates the model and throws on invalid input', () => {
     expect(() =>
       // @ts-expect-error — wrong shape
-      render({ version: 'x', source: { provider: '', rootDir: '/' }, objects: [] }),
+      render({
+        version: 'x',
+        source: { provider: '', rootDir: '/' },
+        objects: [],
+      })
     ).toThrow();
   });
 
@@ -173,15 +191,24 @@ describe('@abapdoc/renderer-html', () => {
 
   // ----- exported helpers -----
 
-  it('kebabCase replaces underscores and lowercases', () => {
-    expect(kebabCase('zcl_pet_service')).toBe('zcl-pet-service');
-    expect(kebabCase('ZCL_PET_SERVICE')).toBe('zcl-pet-service');
-    expect(kebabCase('zpet_t')).toBe('zpet-t');
+  it('objectSlug replaces underscores and lowercases', () => {
+    expect(objectSlug('zcl_pet_service')).toBe('zcl-pet-service');
+    expect(objectSlug('ZCL_PET_SERVICE')).toBe('zcl-pet-service');
+    expect(objectSlug('zpet_t')).toBe('zpet-t');
+  });
+
+  it('objectSlug keeps namespace separators distinct from underscores', () => {
+    // Namespace separators map to underscores; underscores map to dashes,
+    // so the two cannot collide.
+    expect(objectSlug('/foo/zcl_bar')).toBe('_foo_zcl-bar');
+    expect(objectSlug('foo_zcl_bar')).toBe('foo-zcl-bar');
+    expect(objectSlug('a/b_c')).toBe('a_b-c');
+    expect(objectSlug('a_b/c')).toBe('a-b_c');
   });
 
   it('escapeHtml escapes the five HTML-sensitive characters', () => {
     expect(escapeHtml('<script>alert("xss")</script>')).toBe(
-      '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;',
+      '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'
     );
     expect(escapeHtml('a & b > c')).toBe('a &amp; b &gt; c');
     expect(escapeHtml("don't")).toBe('don&#39;t');
@@ -193,5 +220,82 @@ describe('@abapdoc/renderer-html', () => {
 
   it('objectPagePath is just the kebab-cased object name', () => {
     expect(objectPagePath(sampleModel.objects[0]!)).toBe('zcl-pet-service');
+  });
+
+  describe('site', () => {
+    it('emits static pages plus one object page per AbapObject', () => {
+      const { files } = renderSite(sampleModel);
+      const names = files.map((f) => f.path);
+
+      expect(names).toContain('index.html');
+      expect(names).toContain('getting-started.html');
+      expect(names).toContain('architecture.html');
+      expect(names).toContain('examples.html');
+      expect(names).toContain('reference.html');
+
+      for (const obj of sampleModel.objects) {
+        expect(names).toContain(`objects/${objectPagePath(obj)}.html`);
+      }
+      expect(files).toHaveLength(sampleModel.objects.length + 5);
+    });
+
+    it('includes sidebar navigation and object outline on object pages', () => {
+      const { files } = renderSite(sampleModel);
+      const classPage = fileByName(
+        files,
+        `objects/${objectSlug('zcl_pet_service')}.html`
+      );
+      const doc = parseHtml(classPage.content);
+
+      expect(doc.querySelector('.sidebar')).not.toBeNull();
+      expect(doc.querySelector('.outline')).not.toBeNull();
+      expect(doc.querySelector('.outline')?.textContent).toContain('Methods');
+    });
+
+    it('renders the reference page with package grouping and kind cards', () => {
+      const { files } = renderSite(sampleModel);
+      const reference = fileByName(files, 'reference.html');
+      const doc = parseHtml(reference.content);
+
+      expect(doc.querySelector('.ref-nested')).not.toBeNull();
+      expect(doc.querySelector('.ref-flat')).not.toBeNull();
+      expect(doc.querySelector('.kind-grid')).not.toBeNull();
+      expect(doc.querySelector('.toggle-row')).not.toBeNull();
+    });
+
+    it('keeps HTML escaping in the site output', () => {
+      const { files } = renderSite(sampleModel);
+      const classPage = fileByName(
+        files,
+        `objects/${objectSlug('zcl_pet_service')}.html`
+      );
+
+      expect(classPage.content).toContain('&lt;script&gt;');
+      expect(classPage.content).not.toContain('<script>alert');
+    });
+
+    it('has outline targets for every outline anchor', () => {
+      const { files } = renderSite(sampleModel);
+      const findPage = (name: string) =>
+        fileByName(files, `objects/${objectSlug(name)}.html`);
+      const samples: Record<string, string[]> = {
+        zcl_pet_service: ['methods'],
+        zif_pet_service: ['methods'],
+        z_fm_create_pet: ['parameters'],
+        zpet_t: ['fields'],
+      };
+
+      for (const [objectName, ids] of Object.entries(samples)) {
+        const content = findPage(objectName).content;
+        const doc = parseHtml(content);
+        const outline = doc.querySelector('.outline');
+        expect(outline).not.toBeNull();
+
+        for (const id of ids) {
+          expect(outline?.querySelector(`a[href="#${id}"]`)).not.toBeNull();
+          expect(content).toContain(`id="${id}"`);
+        }
+      }
+    });
   });
 });
