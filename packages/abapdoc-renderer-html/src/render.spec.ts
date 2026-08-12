@@ -10,6 +10,7 @@ import {
   objectPagePath,
 } from './index.js';
 import { sampleModel } from './samples.js';
+import { listRenderers } from '@abapdoc/renderer-registry';
 
 /** Parse the first HTML file produced for `name` (or index when name is empty). */
 function fileByName(files: { path: string; content: string }[], name: string) {
@@ -271,6 +272,29 @@ describe('@abapdoc/renderer-html', () => {
       expect(doc.querySelector('h1')?.textContent).toBe('CLI Reference');
       expect(cli.content).toContain('abapdoc build');
       expect(cli.content).toContain('abapdoc validate');
+      const expectedFormats = [...listRenderers().map((r) => r.format).sort(), 'all'].join(', ');
+      expect(cli.content).toContain(expectedFormats);
+    });
+
+    it('shows the sidebar only on the example and object pages', () => {
+      const { files } = renderSite(sampleModel);
+      for (const page of [
+        'index.html',
+        'getting-started.html',
+        'architecture.html',
+        'cli-reference.html',
+      ]) {
+        const doc = parseHtml(fileByName(files, page).content);
+        expect(doc.querySelector('.sidebar')).toBeNull();
+      }
+
+      const examples = parseHtml(fileByName(files, 'examples.html').content);
+      expect(examples.querySelector('.sidebar')).not.toBeNull();
+
+      const classPage = parseHtml(
+        fileByName(files, `objects/${objectSlug('zcl_pet_service')}.html`).content
+      );
+      expect(classPage.querySelector('.sidebar')).not.toBeNull();
     });
 
     it('keeps HTML escaping in the site output', () => {

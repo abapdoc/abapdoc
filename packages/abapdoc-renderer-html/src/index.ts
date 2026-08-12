@@ -38,7 +38,7 @@ import type {
   TypeRef,
 } from '@abapdoc/model';
 import { DocumentationModelSchema } from '@abapdoc/model';
-import { registerRenderer } from '@abapdoc/renderer-registry';
+import { listRenderers, registerRenderer } from '@abapdoc/renderer-registry';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -705,6 +705,9 @@ a:hover { text-decoration: underline; }
 .site-search { width: 12rem; padding: .35rem .6rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); }
 .layout { display: grid; grid-template-columns: var(--sidebar-width) 1fr; padding-top: var(--header-height); min-height: 100vh; }
 .layout.has-outline { grid-template-columns: var(--sidebar-width) 1fr var(--outline-width); }
+.layout.no-sidebar { grid-template-columns: 1fr; }
+.layout.no-sidebar.has-outline { grid-template-columns: 1fr var(--outline-width); }
+.layout.no-sidebar main { grid-column: 1; }
 .sidebar {
   position: fixed; top: var(--header-height); bottom: 0; left: 0; width: var(--sidebar-width);
   overflow-y: auto; padding: 1rem; border-right: 1px solid var(--border); background: var(--bg);
@@ -819,7 +822,10 @@ const SITE_JS = `
     outline.querySelectorAll('a').forEach(a => {
       a.addEventListener('click', () => setActive((a.getAttribute('href') || '').slice(1)));
     });
-    const syncHash = () => { if (location.hash) setActive(location.hash.slice(1)); };
+    const syncHash = () => {
+      if (location.hash) setActive(location.hash.slice(1));
+      else outline.querySelectorAll('a').forEach(a => a.removeAttribute('aria-current'));
+    };
     syncHash();
     window.addEventListener('hashchange', syncHash);
   }
@@ -885,6 +891,17 @@ function siteShell(
       ? `${opts.current} · ${title}`
       : title);
   const hasOutline = opts.outline ? ' has-outline' : '';
+  const hasSidebar = opts.current === 'examples';
+  const layoutClass = `layout${hasOutline}${hasSidebar ? '' : ' no-sidebar'}`;
+  const sidebar = hasSidebar
+    ? `<aside class="sidebar">
+<input class="site-search" id="sidebar-search" type="search" placeholder="Search example objects…" aria-label="Search example objects">
+${opts.navTree ?? ''}
+</aside>`
+    : '';
+  const toggle = hasSidebar
+    ? '<button class="sidebar-toggle" aria-label="Toggle sidebar">≡</button>'
+    : '';
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -896,7 +913,7 @@ function siteShell(
 </head>
 <body>
 <header class="site-header">
-<button class="sidebar-toggle" aria-label="Toggle sidebar">≡</button>
+${toggle}
 <div class="site-header__brand"><a href="${rootPrefix}index.html">${escapeHtml(
     title
   )}</a></div>
@@ -918,11 +935,8 @@ function siteShell(
   }>CLI Reference</a>
 </nav>
 </header>
-<div class="layout${hasOutline}">
-<aside class="sidebar">
-<input class="site-search" id="sidebar-search" type="search" placeholder="Search example objects…" aria-label="Search example objects">
-${opts.navTree ?? ''}
-</aside>
+<div class="${layoutClass}">
+${sidebar}
 <main>${body}</main>
 ${
   opts.outline
@@ -1199,7 +1213,7 @@ function renderCliReferencePage(
   navTree: string,
   rootPrefix = ''
 ): string {
-  const formats = ['html', 'mdx', 'json', 'site', 'all'];
+  const formats = [...listRenderers().map((r) => r.format).sort(), 'all'];
   const body = `
 <h1>CLI Reference</h1>
 <p class="lead">abapdoc is a command-line tool that extracts ABAP Doc comments from an abapGit-style repository and renders them to HTML, MDX, JSON or a full docs site.</p>
