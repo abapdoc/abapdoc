@@ -903,14 +903,14 @@ function siteShell(
 <a href="${rootPrefix}examples.html" ${
     opts.current === 'examples' ? 'aria-current="page"' : ''
   }>Examples</a>
-<a href="${rootPrefix}reference.html" ${
-    opts.current === 'reference' ? 'aria-current="page"' : ''
-  }>Reference</a>
+<a href="${rootPrefix}cli-reference.html" ${
+    opts.current === 'cli-reference' ? 'aria-current="page"' : ''
+  }>CLI Reference</a>
 </nav>
 </header>
 <div class="layout${hasOutline}">
 <aside class="sidebar">
-<input class="site-search" id="sidebar-search" type="search" placeholder="Search pages…" aria-label="Search pages">
+<input class="site-search" id="sidebar-search" type="search" placeholder="Search example objects…" aria-label="Search example objects">
 ${opts.navTree ?? ''}
 </aside>
 <main>${body}</main>
@@ -946,12 +946,19 @@ function renderNavTree({
     currentPage === 'architecture' ? 'aria-current="page"' : ''
   }>Architecture</a></li><li><a href="${rootPrefix}examples.html" ${
     currentPage === 'examples' ? 'aria-current="page"' : ''
-  }>Examples</a></li><li><a href="${rootPrefix}reference.html" ${
-    currentPage === 'reference' ? 'aria-current="page"' : ''
-  }>Reference</a></li></ul><h3>Objects</h3>`;
-  return (
-    top + renderNestedPackageTree(tree, objectPrefix, currentObject ?? '', 0)
-  );
+  }>Examples</a></li><li><a href="${rootPrefix}cli-reference.html" ${
+    currentPage === 'cli-reference' ? 'aria-current="page"' : ''
+  }>CLI Reference</a></li></ul>`;
+  const objects =
+    currentPage === 'examples' || currentObject !== undefined
+      ? `<h3>Example objects</h3>${renderNestedPackageTree(
+          tree,
+          objectPrefix,
+          currentObject ?? '',
+          0
+        )}`
+      : '';
+  return top + objects;
 }
 
 function renderObjectLink(
@@ -1089,26 +1096,26 @@ function renderHomePage(
   const body = `
 <div class="hero">
 <h1>${escapeHtml(title)}</h1>
-<p class="lead">ABAP Docs as never before — a modern, extensible documentation pipeline for ABAP repository objects.</p>
+<p class="lead">Generate modern documentation for ABAP repositories from the command line.</p>
 </div>
-<p>abapdoc extracts <strong>ABAP Doc</strong> comments from abapGit-style repositories and renders them as HTML, MDX (ready for Astro Starlight, Docusaurus, MkDocs) and JSON.</p>
+<p>abapdoc extracts <strong>ABAP Doc</strong> comments from abapGit-style repositories and renders them as static HTML, MDX (ready for Astro Starlight, Docusaurus, MkDocs) or JSON.</p>
 <h2>Why abapdoc?</h2>
 <div class="feature-grid">
+<div class="feature"><h3>CLI-first</h3><p>Install once and run <code>abapdoc build</code> against any abapGit repository. No cloning or build step required to use the tool.</p></div>
 <div class="feature"><h3>Pluggable extraction</h3><p>Start with the file-based extractor; swap in an ADT/AST extractor later without changing renderers.</p></div>
 <div class="feature"><h3>Model-first</h3><p>A Zod-defined, format-independent documentation model shared by every output.</p></div>
-<div class="feature"><h3>Multiple renderers</h3><p>HTML, MDX and JSON outputs are pure transformations of the same model.</p></div>
+<div class="feature"><h3>Multiple renderers</h3><p>HTML, MDX, JSON and a full docs site output are pure transformations of the same model.</p></div>
 </div>
 <h2>Quick start</h2>
-<pre><code>npm install
-npm run build
-npm run abapdoc -- build --src e2e/petstore --out dist/docs --format html</code></pre>
-<p>Then open <code>dist/docs/index.html</code>.</p>
+<pre><code>npm install -g @abapdoc/cli
+abapdoc build --src ./my-abap-repo --out ./docs --format site</code></pre>
+<p>Open <code>./docs/index.html</code> for the docs site and <code>./docs/examples.html</code> for the generated SDK reference.</p>
 <h2>Learn more</h2>
 <ul>
 <li><a href="${rootPrefix}getting-started.html">Getting Started</a></li>
 <li><a href="${rootPrefix}architecture.html">Architecture</a></li>
 <li><a href="${rootPrefix}examples.html">Examples</a></li>
-<li><a href="${rootPrefix}reference.html">SDK Reference</a></li>
+<li><a href="${rootPrefix}cli-reference.html">CLI Reference</a></li>
 </ul>
 `;
   return siteShell(title, body, { current: 'home', navTree, rootPrefix });
@@ -1121,18 +1128,23 @@ function renderGettingStartedPage(
 ): string {
   const body = `
 <h1>Getting Started</h1>
-<p class="lead">Generate ABAP documentation from an abapGit-style repository in a few commands.</p>
+<p class="lead">Install abapdoc once and generate documentation for any abapGit-style ABAP repository.</p>
 <h2>Install</h2>
-<pre><code>npm install
-npm run build</code></pre>
-<h2>Generate HTML docs</h2>
-<pre><code>npm run abapdoc -- build --src e2e/petstore --out dist/docs --format html</code></pre>
+<pre><code>npm install -g @abapdoc/cli</code></pre>
+<p>You can also run without installing via <code>npx @abapdoc/cli</code>.</p>
+<h2>Generate a docs site</h2>
+<pre><code>abapdoc build --src ./path/to/abapgit-repo --out ./docs --format site</code></pre>
+<p>Open <code>./docs/index.html</code> for the product docs and <code>./docs/examples.html</code> for the generated SDK reference.</p>
+<h2>Generate plain HTML pages</h2>
+<pre><code>abapdoc build --src ./path/to/abapgit-repo --out ./docs --format html</code></pre>
 <h2>Generate MDX for a documentation framework</h2>
-<pre><code>npm run abapdoc -- build --src e2e/petstore --out docs-mdx --format mdx</code></pre>
+<pre><code>abapdoc build --src ./path/to/abapgit-repo --out ./docs-mdx --format mdx</code></pre>
+<h2>Generate JSON</h2>
+<pre><code>abapdoc build --src ./path/to/abapgit-repo --out ./docs-json --format json</code></pre>
 <h2>Validate a repository</h2>
-<pre><code>npm run abapdoc -- validate --src e2e/petstore</code></pre>
+<pre><code>abapdoc validate --src ./path/to/abapgit-repo</code></pre>
 <h2>Next steps</h2>
-<p>Read the <a href="${rootPrefix}architecture.html">architecture overview</a> or browse the <a href="${rootPrefix}reference.html">SDK reference</a>.</p>
+<p>Read the <a href="${rootPrefix}architecture.html">architecture overview</a>, browse the <a href="${rootPrefix}examples.html">example output</a>, or check the <a href="${rootPrefix}cli-reference.html">CLI reference</a>.</p>
 `;
   return siteShell(title, body, {
     current: 'getting-started',
@@ -1148,18 +1160,20 @@ function renderArchitecturePage(
 ): string {
   const body = `
 <h1>Architecture</h1>
-<p class="lead">abapdoc is split into three independent layers: extraction, model and rendering.</p>
+<p class="lead">abapdoc is split into independent layers: CLI, extraction, model and rendering.</p>
+<h2>CLI layer</h2>
+<p><code>@abapdoc/cli</code> is the end-user entry point. It validates arguments, calls the extractor, dispatches to the renderer registry, and writes files. It has no knowledge of ABAP syntax or output templates.</p>
 <h2>Extraction layer</h2>
 <p>The extractor walks an abapGit-style repo, reads DDIC XML and ABAP source, and delegates source parsing to <code>@abapdoc/parser</code>. The current file-based extractor is intentionally small; AST/ADT extractors slot in later.</p>
 <h2>Model layer</h2>
 <p>The model is defined once with Zod and exported as JSON Schema. It is the only contract between extraction and rendering, so new output formats need no I/O or extraction logic.</p>
 <h2>Rendering layer</h2>
-<p>Each renderer (<code>renderer-html</code>, <code>renderer-mdx</code>, <code>renderer-json</code>) consumes only the model and returns a flat list of file records. They share no state and can be tested in isolation.</p>
+<p>Each renderer (<code>renderer-html</code>, <code>renderer-mdx</code>, <code>renderer-json</code>) consumes only the model and returns a flat list of file records. The <code>site</code> output adds a product-docs shell around the generated SDK reference. Renderers share no state and can be tested in isolation.</p>
 <h2>Extending abapdoc</h2>
 <ul>
 <li>Add custom tags in the parser and model.</li>
 <li>Implement a new extractor by producing the same model.</li>
-<li>Implement a new renderer by consuming the model.</li>
+<li>Implement a new renderer by consuming the model and registering with <code>@abapdoc/renderer-registry</code>.</li>
 </ul>
 <p>See the <a href="https://github.com/abapdoc/abapdoc">GitHub repository</a> for the full design document and source code.</p>
 `;
@@ -1170,23 +1184,64 @@ function renderArchitecturePage(
   });
 }
 
-function renderExamplesPage(
+function renderCliReferencePage(
   title: string,
   navTree: string,
   rootPrefix = ''
 ): string {
+  const formats = ['html', 'mdx', 'json', 'site', 'all'];
   const body = `
-<h1>Examples</h1>
-<p class="lead">The <code>e2e/petstore</code> sample is a tiny abapGit repository that demonstrates the generated documentation output.</p>
-<h2>Petstore sample</h2>
-<p>It contains a service interface, a database table, a service class and a utility function module. Run the following command to generate the docs locally:</p>
-<pre><code>npm run abapdoc -- build --src e2e/petstore --out dist/petstore --format html</code></pre>
-<p><a href="${rootPrefix}reference.html">Browse the generated SDK reference</a> to see the object pages, package grouping, search and right-hand outline in action.</p>
+<h1>CLI Reference</h1>
+<p class="lead">abapdoc is a command-line tool that extracts ABAP Doc comments from an abapGit-style repository and renders them to HTML, MDX, JSON or a full docs site.</p>
+<h2>Global options</h2>
+<table>
+<thead><tr><th>Option</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>-V, --version</code></td><td>Print the version number and exit.</td></tr>
+<tr><td><code>-h, --help</code></td><td>Print help information for any command.</td></tr>
+</tbody>
+</table>
+<h2>Commands</h2>
+<h3><code>abapdoc build</code></h3>
+<p>Extract and render documentation from an abapGit-style repo.</p>
+<table>
+<thead><tr><th>Option</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>--src &lt;dir&gt;</code> <strong>(required)</strong></td><td>Path to the abapGit-style repository root.</td></tr>
+<tr><td><code>--out &lt;dir&gt;</code> <strong>(required)</strong></td><td>Output directory for rendered files.</td></tr>
+<tr><td><code>--format &lt;fmt&gt;</code></td><td>Output format: one of <code>${formats.join(
+    ', '
+  )}</code>. Defaults to <code>all</code>.</td></tr>
+</tbody>
+</table>
+<h4>Examples</h4>
+<pre><code># Generate a full docs site
+abapdoc build --src ./my-abap-repo --out ./docs --format site
+
+# Generate plain HTML pages
+abapdoc build --src ./my-abap-repo --out ./docs --format html
+
+# Generate every format, each in its own subdirectory
+abapdoc build --src ./my-abap-repo --out ./docs --format all</code></pre>
+<h3><code>abapdoc validate</code></h3>
+<p>Extract and validate the documentation model against the schema. No files are written.</p>
+<table>
+<thead><tr><th>Option</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>--src &lt;dir&gt;</code> <strong>(required)</strong></td><td>Path to the abapGit-style repository root.</td></tr>
+</tbody>
+</table>
+<h4>Example</h4>
+<pre><code>abapdoc validate --src ./my-abap-repo</code></pre>
 `;
-  return siteShell(title, body, { current: 'examples', navTree, rootPrefix });
+  return siteShell(title, body, {
+    current: 'cli-reference',
+    navTree,
+    rootPrefix,
+  });
 }
 
-function renderReferenceIndexPage(
+function renderExamplesPage(
   model: DocumentationModel,
   title: string,
   navTree: string,
@@ -1215,10 +1270,14 @@ function renderReferenceIndexPage(
     })
     .join('');
   const body = `
-<h1>SDK Reference</h1>
-<p class="lead">${model.objects.length} documented object${
+<h1>Examples</h1>
+<p class="lead">This is an example SDK reference generated by abapdoc from the source repository. It demonstrates the sidebar index, search, nested/flat package grouping, kind cards and right-hand outline that abapdoc produces for any abapGit repository.</p>
+<h2>Run it yourself</h2>
+<pre><code>abapdoc build --src ./path/to/abapgit-repo --out ./docs --format site</code></pre>
+<p>Open <code>./docs/examples.html</code> to browse the generated reference.</p>
+<h2>${model.objects.length} documented object${
     model.objects.length === 1 ? '' : 's'
-  }.</p>
+  }</h2>
 <div class="toggle-row">
 <label for="view-toggle">Flat list</label>
 <input type="checkbox" id="view-toggle" aria-label="Toggle flat list">
@@ -1233,7 +1292,7 @@ ${renderFlatPackageTree(tree, objectPrefix)}
 <div class="kind-grid">${kindCards}</div>
 `;
   return siteShell(title, body, {
-    current: 'reference',
+    current: 'examples',
     navTree,
     rootPrefix,
   });
@@ -1255,7 +1314,7 @@ function renderSiteObjectPage(
   const body = `${heading}\n${renderSiteObjectBody(obj)}`;
   const outline = buildObjectOutline(obj);
   return siteShell(title, body, {
-    current: 'reference',
+    current: 'examples',
     pageTitle: obj.name,
     outline,
     navTree,
@@ -1320,23 +1379,23 @@ export function renderSite(
     ),
   });
   files.push({
-    path: 'examples.html',
-    content: renderExamplesPage(
+    path: 'cli-reference.html',
+    content: renderCliReferencePage(
       title,
       navFor({
-        currentPage: 'examples',
+        currentPage: 'cli-reference',
         rootPrefix: '',
         objectPrefix: OBJECT_PREFIX,
       })
     ),
   });
   files.push({
-    path: 'reference.html',
-    content: renderReferenceIndexPage(
+    path: 'examples.html',
+    content: renderExamplesPage(
       model,
       title,
       navFor({
-        currentPage: 'reference',
+        currentPage: 'examples',
         rootPrefix: '',
         objectPrefix: OBJECT_PREFIX,
       })
@@ -1351,7 +1410,7 @@ export function renderSite(
         obj,
         title,
         navFor({
-          currentPage: 'reference',
+          currentPage: 'examples',
           currentObject: objectPath,
           rootPrefix: '../',
           objectPrefix: '',
