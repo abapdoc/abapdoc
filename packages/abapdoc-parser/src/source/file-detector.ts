@@ -35,17 +35,18 @@ export interface FileKindResult {
   programType?: Program['programType'];
 }
 
-/** Strip a trailing comment (`" comment`) and whitespace, uppercase. */
+/** Strip a trailing comment (`" comment`) and whitespace. */
 export function firstMeaningfulLine(lines: readonly string[]): string {
   for (const raw of lines) {
-    const trimmed = raw.replace(/\s+/g, ' ').trim();
-    if (trimmed.length === 0) {
+    const normalised = raw.replace(/\s+/g, ' ').trim();
+    if (normalised.length === 0) {
       continue;
     }
-    const quoteIdx = trimmed.indexOf('"');
-    return (
-      quoteIdx === -1 ? trimmed : trimmed.slice(0, quoteIdx).trimEnd()
-    ).trim();
+    const meaningful = stripComment(normalised);
+    if (meaningful.length === 0) {
+      continue;
+    }
+    return meaningful;
   }
   return '';
 }
