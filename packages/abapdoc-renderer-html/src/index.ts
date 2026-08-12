@@ -893,13 +893,13 @@ function siteShell(
   const hasOutline = opts.outline ? ' has-outline' : '';
   const hasSidebar = opts.current === 'examples';
   const layoutClass = `layout${hasOutline}${hasSidebar ? '' : ' no-sidebar'}`;
-  const sidebar = hasSidebar
+  const sidebarHtml = hasSidebar
     ? `<aside class="sidebar">
 <input class="site-search" id="sidebar-search" type="search" placeholder="Search example objects…" aria-label="Search example objects">
 ${opts.navTree ?? ''}
 </aside>`
     : '';
-  const toggle = hasSidebar
+  const toggleHtml = hasSidebar
     ? '<button class="sidebar-toggle" aria-label="Toggle sidebar">≡</button>'
     : '';
   return `<!doctype html>
@@ -913,7 +913,7 @@ ${opts.navTree ?? ''}
 </head>
 <body>
 <header class="site-header">
-${toggle}
+${toggleHtml}
 <div class="site-header__brand"><a href="${rootPrefix}index.html">${escapeHtml(
     title
   )}</a></div>
@@ -936,7 +936,7 @@ ${toggle}
 </nav>
 </header>
 <div class="${layoutClass}">
-${sidebar}
+${sidebarHtml}
 <main>${body}</main>
 ${
   opts.outline
@@ -1213,7 +1213,12 @@ function renderCliReferencePage(
   navTree: string,
   rootPrefix = ''
 ): string {
-  const formats = [...listRenderers().map((r) => r.format).sort(), 'all'];
+  const formats = [
+    ...listRenderers()
+      .map((r) => r.format)
+      .sort(),
+    'all',
+  ];
   const body = `
 <h1>CLI Reference</h1>
 <p class="lead">abapdoc is a command-line tool that extracts ABAP Doc comments from an abapGit-style repository and renders them to HTML, MDX, JSON or a full docs site.</p>
