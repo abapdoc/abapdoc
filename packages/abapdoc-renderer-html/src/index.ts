@@ -800,7 +800,7 @@ const SITE_JS = `
 
   const outline = document.querySelector('.outline');
   if (outline) {
-    const setActive = (id: string) => {
+    const setActive = (id) => {
       outline.querySelectorAll('a').forEach(a => a.removeAttribute('aria-current'));
       const link = [...outline.querySelectorAll('a')].find(a => (a.getAttribute('href') || '').slice(1) === id);
       if (link) link.setAttribute('aria-current', 'true');
