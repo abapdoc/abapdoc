@@ -801,9 +801,11 @@ const SITE_JS = `
   const outline = document.querySelector('.outline');
   if (outline) {
     const setActive = (id) => {
-      outline.querySelectorAll('a').forEach(a => a.removeAttribute('aria-current'));
       const link = [...outline.querySelectorAll('a')].find(a => (a.getAttribute('href') || '').slice(1) === id);
-      if (link) link.setAttribute('aria-current', 'true');
+      if (link) {
+        outline.querySelectorAll('a').forEach(a => a.removeAttribute('aria-current'));
+        link.setAttribute('aria-current', 'true');
+      }
     };
     const headings = [...document.querySelectorAll('main [id]')].filter(h => /^h[2-3]$/i.test(h.tagName));
     if (headings.length > 0) {
