@@ -122,6 +122,8 @@ export function kebabCase(name: string): string {
 export function escapeMarkdown(value: string): string {
   return (
     value
+      // Escape backslashes first so the escapes below are not misread.
+      .replace(/\\/g, '\\\\')
       // Pipes inside table cells must be escaped or they break the row.
       .replace(/\|/g, '\\|')
       // Newlines inside table cells must be replaced with `<br>` for GFM.

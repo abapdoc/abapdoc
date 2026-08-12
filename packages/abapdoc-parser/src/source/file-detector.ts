@@ -22,7 +22,12 @@
 
 import type { Program } from '@abapdoc/model';
 
-export type FileKind = 'class' | 'interface' | 'function-module' | 'program' | 'structure';
+export type FileKind =
+  | 'class'
+  | 'interface'
+  | 'function-module'
+  | 'program'
+  | 'structure';
 
 export interface FileKindResult {
   kind: FileKind;
@@ -30,14 +35,18 @@ export interface FileKindResult {
   programType?: Program['programType'];
 }
 
-/** Strip a trailing comment (`" comment`) and whitespace, uppercase. */
+/** Strip a trailing comment (`" comment`) and whitespace. */
 export function firstMeaningfulLine(lines: readonly string[]): string {
   for (const raw of lines) {
-    const trimmed = raw.replace(/\s+/g, ' ').trim();
-    if (trimmed.length === 0) {
+    const normalised = raw.replace(/\s+/g, ' ').trim();
+    if (normalised.length === 0) {
       continue;
     }
-    return trimmed.replace(/\s*"[\s\S]*$/u, '').trim();
+    const meaningful = stripComment(normalised);
+    if (meaningful.length === 0) {
+      continue;
+    }
+    return meaningful;
   }
   return '';
 }
@@ -60,7 +69,10 @@ export function detectFileKind(lines: readonly string[]): FileKindResult {
   }
 
   // 1. INTERFACE — first meaningful line starts with `INTERFACE`.
-  if (meaningful.length > 0 && meaningful[0]!.toUpperCase().startsWith('INTERFACE ')) {
+  if (
+    meaningful.length > 0 &&
+    meaningful[0]!.toUpperCase().startsWith('INTERFACE ')
+  ) {
     return { kind: 'interface' };
   }
 
@@ -70,7 +82,9 @@ export function detectFileKind(lines: readonly string[]): FileKindResult {
   const upperLines = meaningful.map((l) => l.toUpperCase());
   if (upperLines[0]?.startsWith('CLASS ')) {
     const hasDefinition = upperLines.some((l) => l.includes(' DEFINITION'));
-    const hasImplementation = upperLines.some((l) => l.includes(' IMPLEMENTATION'));
+    const hasImplementation = upperLines.some((l) =>
+      l.includes(' IMPLEMENTATION')
+    );
     if (hasDefinition || hasImplementation) {
       return { kind: 'class' };
     }
@@ -102,7 +116,9 @@ export function detectFileKind(lines: readonly string[]): FileKindResult {
   }
 
   // 6. TYPES block → structure.
-  if (upperLines.some((l) => l.startsWith('TYPES:') || l.startsWith('TYPES '))) {
+  if (
+    upperLines.some((l) => l.startsWith('TYPES:') || l.startsWith('TYPES '))
+  ) {
     return { kind: 'structure' };
   }
 
@@ -114,12 +130,94 @@ function stripLeadingWhitespace(line: string): string {
   return line.replace(/^\s+/, '');
 }
 
+function buildBracePairs(line: string): number[] {
+  // Precompute matching `{` -> `}` pairs for the whole line in one lexical
+  // pass. Braces inside `'...'`, `` `...` ``, and `|...|` literals/templates
+  // are ignored, so each line is scanned a constant number of times.
+  const pairs = new Array<number>(line.length).fill(-1);
+  const opens: number[] = [];
+  const stack: Array<"'" | '`' | '|' | '{'> = [];
+
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    const top = stack[stack.length - 1];
+
+    if (top === "'") {
+      if (ch === "'" && line[i + 1] === "'") {
+        i += 1;
+        continue;
+      }
+      if (ch === "'") {
+        stack.pop();
+      }
+      continue;
+    }
+
+    if (top === '`') {
+      if (ch === '`' && line[i + 1] === '`') {
+        i += 1;
+        continue;
+      }
+      if (ch === '`') {
+        stack.pop();
+      }
+      continue;
+    }
+
+    if (top === '|') {
+      if (ch === '\\') {
+        i += 1;
+        continue;
+      }
+      if (ch === '|') {
+        stack.pop();
+        continue;
+      }
+      if (ch === '{') {
+        stack.push('{');
+        opens.push(i);
+        continue;
+      }
+      continue;
+    }
+
+    if (top === '{') {
+      if (ch === '}') {
+        stack.pop();
+        const open = opens.pop()!;
+        pairs[open] = i;
+        continue;
+      }
+      if (ch === '{') {
+        stack.push('{');
+        opens.push(i);
+        continue;
+      }
+      // Fall through so quotes / templates inside expressions are handled.
+    }
+
+    if (ch === "'") {
+      stack.push("'");
+      continue;
+    }
+    if (ch === '`') {
+      stack.push('`');
+      continue;
+    }
+    if (ch === '|') {
+      stack.push('|');
+      continue;
+    }
+  }
+
+  return pairs;
+}
+
 function stripComment(line: string): string {
   // Strip `*` pseudo-comments (e.g. `*&---...`, `*& Report NAME`)
-  // AND inline ABAP comments after `"`, respecting string literals.
-  // For v0 we accept that a `"` inside `'…'` may be misread. The
-  // detection layer only inspects the first 30 meaningful lines,
-  // and ABAP source rarely has comments on the leading statement.
+  // AND inline ABAP comments after `"`.
+  // Respect `'...'` text field literals, `` `...` `` text string literals,
+  // and `|...|` string templates (including `{...}` expressions and `\` escapes).
   const trimmed = line.trim();
   if (trimmed.startsWith('*')) {
     // Pseudo-comment; remove the whole line so it does not bias
@@ -127,14 +225,90 @@ function stripComment(line: string): string {
     // sees them — only the file-kind detector ignores them.
     return '';
   }
-  const idx = line.indexOf('"');
-  if (idx === -1) {
-    return line;
+
+  const stack: Array<"'" | '`' | '|' | '{'> = [];
+  const bracePairs = buildBracePairs(line);
+
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    const top = stack[stack.length - 1];
+
+    if (top === "'") {
+      if (ch === "'" && line[i + 1] === "'") {
+        i += 1; // escaped '' inside a text field literal
+        continue;
+      }
+      if (ch === "'") {
+        stack.pop();
+      }
+      continue;
+    }
+
+    if (top === '`') {
+      if (ch === '`' && line[i + 1] === '`') {
+        i += 1; // escaped `` inside a text string literal
+        continue;
+      }
+      if (ch === '`') {
+        stack.pop();
+      }
+      continue;
+    }
+
+    if (top === '|') {
+      if (ch === '\\') {
+        i += 1; // escape next char inside string template
+        continue;
+      }
+      if (ch === '|') {
+        stack.pop();
+        continue;
+      }
+      if (ch === '{') {
+        // Only treat `{` as the start of an embedded expression if a matching
+        // `}` exists on the same line. Otherwise the `{` is literal and a
+        // trailing `"` comment on this line could be swallowed.
+        if (bracePairs[i] !== -1) {
+          stack.push('{');
+        }
+        continue;
+      }
+      continue;
+    }
+
+    if (top === '{') {
+      if (ch === '}') {
+        stack.pop();
+        continue;
+      }
+      if (ch === '{') {
+        if (bracePairs[i] !== -1) {
+          stack.push('{');
+        }
+        continue;
+      }
+      // Other characters inside `{...}` fall through so nested literals are handled.
+    }
+
+    if (ch === '"' && stack.length === 0) {
+      return line.slice(0, i).trimEnd();
+    }
+
+    if (ch === "'") {
+      stack.push("'");
+      continue;
+    }
+
+    if (ch === '`') {
+      stack.push('`');
+      continue;
+    }
+
+    if (ch === '|') {
+      stack.push('|');
+      continue;
+    }
   }
-  // Check we're not inside `'…'`.
-  const before = line.slice(0, idx);
-  if ((before.match(/'/g) ?? []).length % 2 === 1) {
-    return line;
-  }
-  return before.trimEnd();
+
+  return line;
 }
