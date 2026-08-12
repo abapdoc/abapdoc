@@ -130,6 +130,96 @@ function stripLeadingWhitespace(line: string): string {
   return line.replace(/^\s+/, '');
 }
 
+function findMatchingBrace(line: string, start: number): number | undefined {
+  // Scan from the `start` index of an opening `{` to the matching `}`.
+  // Respects `'...'`, `` `...` ``, and `|...|` literals so braces inside
+  // strings / templates do not fool the scanner.
+  const stack: Array<"'" | '`' | '|' | '{'> = ['{'];
+  let i = start + 1;
+  while (i < line.length) {
+    const ch = line[i];
+    const top = stack[stack.length - 1];
+
+    if (top === "'") {
+      if (ch === "'" && line[i + 1] === "'") {
+        i += 2;
+        continue;
+      }
+      if (ch === "'") {
+        stack.pop();
+      }
+      i += 1;
+      continue;
+    }
+
+    if (top === '`') {
+      if (ch === '`' && line[i + 1] === '`') {
+        i += 2;
+        continue;
+      }
+      if (ch === '`') {
+        stack.pop();
+      }
+      i += 1;
+      continue;
+    }
+
+    if (top === '|') {
+      if (ch === '\\') {
+        i += 2;
+        continue;
+      }
+      if (ch === '|') {
+        stack.pop();
+        i += 1;
+        continue;
+      }
+      if (ch === '{') {
+        stack.push('{');
+        i += 1;
+        continue;
+      }
+      i += 1;
+      continue;
+    }
+
+    if (top === '{') {
+      if (ch === '}') {
+        stack.pop();
+        if (stack.length === 0) {
+          return i;
+        }
+        i += 1;
+        continue;
+      }
+      if (ch === '{') {
+        stack.push('{');
+        i += 1;
+        continue;
+      }
+      // Fall through so quotes / templates inside expressions are handled.
+    }
+
+    if (ch === "'") {
+      stack.push("'");
+      i += 1;
+      continue;
+    }
+    if (ch === '`') {
+      stack.push('`');
+      i += 1;
+      continue;
+    }
+    if (ch === '|') {
+      stack.push('|');
+      i += 1;
+      continue;
+    }
+    i += 1;
+  }
+  return undefined;
+}
+
 function stripComment(line: string): string {
   // Strip `*` pseudo-comments (e.g. `*&---...`, `*& Report NAME`)
   // AND inline ABAP comments after `"`.
@@ -181,7 +271,12 @@ function stripComment(line: string): string {
         continue;
       }
       if (ch === '{') {
-        stack.push('{');
+        // Only treat `{` as the start of an embedded expression if a matching
+        // `}` exists on the same line. Otherwise the `{` is literal and a
+        // trailing `"` comment on this line could be swallowed.
+        if (findMatchingBrace(line, i) !== undefined) {
+          stack.push('{');
+        }
         continue;
       }
       continue;
@@ -193,7 +288,9 @@ function stripComment(line: string): string {
         continue;
       }
       if (ch === '{') {
-        stack.push('{');
+        if (findMatchingBrace(line, i) !== undefined) {
+          stack.push('{');
+        }
         continue;
       }
       // Other characters inside `{...}` fall through so nested literals are handled.

@@ -41,6 +41,18 @@ describe('firstMeaningfulLine', () => {
     ).toBe('DATA text = |{ |nested| }|.');
   });
 
+  it('treats an unmatched `{` inside a string template as literal', () => {
+    expect(firstMeaningfulLine(['DATA text = |A { B|. " trailing'])).toBe(
+      'DATA text = |A { B|.'
+    );
+  });
+
+  it('does not confuse `}` inside a string literal inside a template expression', () => {
+    expect(
+      firstMeaningfulLine(["DATA text = |{ 'a } b' }|. \" trailing"])
+    ).toBe("DATA text = |{ 'a } b' }|.");
+  });
+
   it('skips blank lines and *-comments', () => {
     expect(firstMeaningfulLine(['', '* comment', '  INTERFACE foo.'])).toBe(
       'INTERFACE foo.'
