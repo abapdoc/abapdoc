@@ -7,11 +7,11 @@
  *
  * Output file layout:
  *   index.html                — landing page grouped by kind.
- *   <kebab-name>.html         — one page per top-level AbapObject.
+ *   <object-slug>.html        — one page per top-level AbapObject.
  *
  * Design constraints:
  *   - No external dependencies beyond `@abapdoc/model` and `zod`.
- *   - No templating engine; small helpers (`escapeHtml`, `kebabCase`,
+ *   - No templating engine; small helpers (`escapeHtml`, `objectSlug`,
  *     `renderDocBlock`) are intentionally inlined in this file. Per
  *     architecture decision: duplicated across the three renderers
  *     (YAGNI on a shared `renderer-common` package).
@@ -115,7 +115,7 @@ registerRenderer({ format: 'site', render: renderSite });
  * object name as a single, flat file-system segment while remaining injective
  * for underscore vs namespace separator boundaries.
  */
-export function kebabCase(name: string): string {
+export function objectSlug(name: string): string {
   return name
     .replace(/\\/g, '/')
     .split('/')
@@ -126,7 +126,7 @@ export function kebabCase(name: string): string {
 
 /** Path (no extension) of the HTML page for a given AbapObject. */
 export function objectPagePath(obj: AbapObject): string {
-  return kebabCase(obj.name);
+  return objectSlug(obj.name);
 }
 
 // ---------------------------------------------------------------------------
@@ -381,7 +381,7 @@ function renderInheritance(cls: Class): string {
   if (cls.superclass) {
     bits.push(
       `<p>Extends <a href="${escapeHtml(
-        kebabCase(cls.superclass)
+        objectSlug(cls.superclass)
       )}.html"><code>${escapeHtml(cls.superclass)}</code></a></p>`
     );
   }
@@ -389,7 +389,7 @@ function renderInheritance(cls: Class): string {
     const links = cls.interfaces
       .map(
         (i) =>
-          `<a href="${escapeHtml(kebabCase(i))}.html"><code>${escapeHtml(
+          `<a href="${escapeHtml(objectSlug(i))}.html"><code>${escapeHtml(
             i
           )}</code></a>`
       )
@@ -590,7 +590,7 @@ function renderTag(tag: Tag): string {
       )}</code>${desc}</p>`;
     }
     case 'see': {
-      const target = kebabCase(tag.target);
+      const target = objectSlug(tag.target);
       return `<p><strong>See:</strong> <a href="${escapeHtml(
         target
       )}.html"><code>${escapeHtml(tag.target)}</code></a></p>`;
