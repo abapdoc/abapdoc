@@ -290,7 +290,9 @@ function renderClassBody(cls: Class): string {
     const methodIds = buildMethodIds(methods);
     parts.push(`<h2 id="methods">Methods</h2>`);
     parts.push(
-      ...methods.map((m, i) => renderMethodSection(m, methodIds.at(i)!))
+      ...methods.map((m, i) =>
+        renderMethodSection(m, getMethodId(methodIds, i))
+      )
     );
   }
 
@@ -355,7 +357,9 @@ function renderInterfaceBody(iface: Interface): string {
     const methodIds = buildMethodIds(methods);
     parts.push(`<h2 id="methods">Methods</h2>`);
     parts.push(
-      ...methods.map((m, i) => renderMethodSection(m, methodIds.at(i)!))
+      ...methods.map((m, i) =>
+        renderMethodSection(m, getMethodId(methodIds, i))
+      )
     );
   }
   return parts.join('\n');
@@ -465,6 +469,14 @@ function buildMethodIds(methods: readonly Method[]): readonly string[] {
     ids.push(id);
   }
   return ids;
+}
+
+function getMethodId(methodIds: readonly string[], index: number): string {
+  const id = methodIds.at(index);
+  if (id === undefined) {
+    throw new Error(`Missing method id at index ${index}`);
+  }
+  return id;
 }
 
 function renderMethodSection(method: Method, headingId: string): string {
@@ -1140,7 +1152,9 @@ function renderMethodOutlineItems(methods: readonly Method[]): string {
   const methodItems = methods
     .map(
       (m, i) =>
-        `<li><a href="#${methodIds.at(i)!}">${escapeHtml(m.name)}</a></li>`
+        `<li><a href="#${getMethodId(methodIds, i)}">${escapeHtml(
+          m.name
+        )}</a></li>`
     )
     .join('');
   return `<li><a href="#methods">Methods</a><ul>${methodItems}</ul></li>`;
