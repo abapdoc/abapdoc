@@ -287,8 +287,13 @@ function renderClassBody(cls: Class): string {
 
   const methods = cls.methods ?? [];
   if (methods.length > 0) {
-    parts.push(`<h2>Methods</h2>`);
-    parts.push(...methods.map(renderMethodSection));
+    const methodIds = buildMethodIdMap(methods);
+    parts.push(`<h2 id="methods">Methods</h2>`);
+    parts.push(
+      ...methods.map((m) =>
+        renderMethodSection(m, methodIds.get(m.name) ?? methodHeadingId(m.name))
+      )
+    );
   }
 
   if ((cls.types ?? []).length > 0) {
@@ -331,18 +336,14 @@ function renderClassBody(cls: Class): string {
 
   if ((cls.localClasses ?? []).length > 0) {
     parts.push(`<h2 id="local-classes">Local classes</h2>`);
-    parts.push(
-      `<ul>` +
-        (cls.localClasses ?? [])
-          .map(
-            (c) =>
-              `<li id="${escapeHtml(objectSlug(c.name))}"><code>${escapeHtml(
-                c.name
-              )}</code></li>`
-          )
-          .join('') +
-        `</ul>`
-    );
+    for (const c of cls.localClasses ?? []) {
+      parts.push(
+        `<h3 id="local-class-${escapeHtml(
+          objectSlug(c.name)
+        )}"><code>${escapeHtml(c.name)}</code></h3>`
+      );
+      if (c.doc !== undefined) parts.push(renderDocBlock(c.doc));
+    }
   }
 
   return parts.join('\n');
@@ -353,8 +354,13 @@ function renderInterfaceBody(iface: Interface): string {
   parts.push(renderDocBlock(iface.doc));
   const methods = iface.methods ?? [];
   if (methods.length > 0) {
-    parts.push(`<h2>Methods</h2>`);
-    parts.push(...methods.map(renderMethodSection));
+    const methodIds = buildMethodIdMap(methods);
+    parts.push(`<h2 id="methods">Methods</h2>`);
+    parts.push(
+      ...methods.map((m) =>
+        renderMethodSection(m, methodIds.get(m.name) ?? methodHeadingId(m.name))
+      )
+    );
   }
   return parts.join('\n');
 }
@@ -439,10 +445,28 @@ function methodHeadingId(name: string): string {
   return safeId(name, 'method');
 }
 
-function renderMethodSection(method: Method): string {
+function buildMethodIdMap(
+  methods: readonly Method[]
+): ReadonlyMap<string, string> {
+  const used = new Set<string>();
+  const map = new Map<string, string>();
+  for (const m of methods) {
+    const base = methodHeadingId(m.name);
+    let id = base;
+    let suffix = 2;
+    while (used.has(id)) {
+      id = `${base}-${suffix}`;
+      suffix++;
+    }
+    used.add(id);
+    map.set(m.name, id);
+  }
+  return map;
+}
+
+function renderMethodSection(method: Method, headingId: string): string {
   const badge = `<span class="badge">${escapeHtml(method.visibility)}</span>`;
-  const headingId = escapeHtml(methodHeadingId(method.name));
-  const heading = `<h3 id="${headingId}"><code>${escapeHtml(
+  const heading = `<h3 id="${escapeHtml(headingId)}"><code>${escapeHtml(
     method.name
   )}</code> ${badge}</h3>`;
 
@@ -1108,6 +1132,31 @@ function renderSiteObjectBody(obj: AbapObject): string {
   return addBodyHeadingIds(body);
 }
 
+function renderMethodOutlineItems(methods: readonly Method[]): string {
+  const methodIds = buildMethodIdMap(methods);
+  const methodItems = methods
+    .map(
+      (m) =>
+        `<li><a href="#${
+          methodIds.get(m.name) ?? methodHeadingId(m.name)
+        }">${escapeHtml(m.name)}</a></li>`
+    )
+    .join('');
+  return `<li><a href="#methods">Methods</a><ul>${methodItems}</ul></li>`;
+}
+
+function renderLocalClassOutlineItems(classes: readonly Class[]): string {
+  const localItems = classes
+    .map(
+      (c) =>
+        `<li><a href="#local-class-${escapeHtml(
+          objectSlug(c.name)
+        )}">${escapeHtml(c.name)}</a></li>`
+    )
+    .join('');
+  return `<li><a href="#local-classes">Local classes</a><ul>${localItems}</ul></li>`;
+}
+
 function buildObjectOutline(obj: AbapObject): string {
   const items: string[] = [];
   if (obj.kind === 'class') {
@@ -1115,44 +1164,14 @@ function buildObjectOutline(obj: AbapObject): string {
     if (obj.attributes?.length)
       items.push('<li><a href="#attributes">Attributes</a></li>');
     if (obj.methods?.length) {
-      const methodItems = obj.methods
-        .map(
-          (m) =>
-            `<li><a href="#${methodHeadingId(m.name)}">${escapeHtml(
-              m.name
-            )}</a></li>`
-        )
-        .join('');
-      items.push(
-        `<li><a href="#methods">Methods</a><ul>${methodItems}</ul></li>`
-      );
+      items.push(renderMethodOutlineItems(obj.methods));
     }
     if (obj.localClasses?.length) {
-      const localItems = obj.localClasses
-        .map(
-          (c) =>
-            `<li><a href="#${escapeHtml(objectSlug(c.name))}">${escapeHtml(
-              c.name
-            )}</a></li>`
-        )
-        .join('');
-      items.push(
-        `<li><a href="#local-classes">Local classes</a><ul>${localItems}</ul></li>`
-      );
+      items.push(renderLocalClassOutlineItems(obj.localClasses));
     }
   } else if (obj.kind === 'interface') {
     if (obj.methods?.length) {
-      const methodItems = obj.methods
-        .map(
-          (m) =>
-            `<li><a href="#${methodHeadingId(m.name)}">${escapeHtml(
-              m.name
-            )}</a></li>`
-        )
-        .join('');
-      items.push(
-        `<li><a href="#methods">Methods</a><ul>${methodItems}</ul></li>`
-      );
+      items.push(renderMethodOutlineItems(obj.methods));
     }
   } else if (obj.kind === 'function-module') {
     items.push('<li><a href="#parameters">Parameters</a></li>');
