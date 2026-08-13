@@ -19,7 +19,7 @@ describe('malformed inputs are rejected', () => {
         version: '0.0.1',
         source: { provider: 'file', rootDir: '.' },
         objects: [],
-      }),
+      })
     ).toThrow(ZodError);
   });
 
@@ -29,7 +29,7 @@ describe('malformed inputs are rejected', () => {
         name: 'zcl_foo',
         visibility: 'public',
         sourceLocation: { file: 'a', startLine: 1, endLine: 2 },
-      }),
+      })
     ).toThrow(ZodError);
   });
 
@@ -39,7 +39,7 @@ describe('malformed inputs are rejected', () => {
         kind: 'enum',
         name: 'zcl_foo',
         sourceLocation: { file: 'a', startLine: 1, endLine: 2 },
-      }),
+      })
     ).toThrow(ZodError);
   });
 
@@ -49,20 +49,20 @@ describe('malformed inputs are rejected', () => {
         name: 'iv_foo',
         direction: 'sideways',
         type: 'i',
-      }),
+      })
     ).toThrow(ZodError);
   });
 
   it('rejects a ParameterTag missing the required description', () => {
     expect(() =>
-      TagSchema.parse({ kind: 'parameter', name: 'iv_foo' }),
+      TagSchema.parse({ kind: 'parameter', name: 'iv_foo' })
     ).toThrow(ZodError);
   });
 
   it('rejects a RaisingTag missing the required name', () => {
-    expect(() => TagSchema.parse({ kind: 'raising', description: 'oops' })).toThrow(
-      ZodError,
-    );
+    expect(() =>
+      TagSchema.parse({ kind: 'raising', description: 'oops' })
+    ).toThrow(ZodError);
   });
 
   it('rejects a SeeTag missing the target', () => {
@@ -71,16 +71,16 @@ describe('malformed inputs are rejected', () => {
 
   it('rejects a CustomTag missing body', () => {
     expect(() => TagSchema.parse({ kind: 'custom', name: 'since' })).toThrow(
-      ZodError,
+      ZodError
     );
   });
 
   it('rejects a model whose objects array is missing', () => {
     expect(() =>
       DocumentationModelSchema.parse({
-        version: '1.0.0',
+        version: '1.1.0',
         source: { provider: 'file', rootDir: '.' },
-      }),
+      })
     ).toThrow(ZodError);
   });
 
@@ -97,7 +97,7 @@ describe('malformed inputs are rejected', () => {
             sourceLocation: { file: 'a.abap', startLine: 0, endLine: 0 },
           },
         ],
-      }),
+      })
     ).toThrow(ZodError);
   });
 });

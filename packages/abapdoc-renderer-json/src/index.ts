@@ -10,12 +10,12 @@
  * Output file layout:
  *   model.json     — `JSON.stringify(model, null, 2)` of the input.
  *
- * The round-trip property (`DocumentationModelSchema.parse(JSON.parse(content))`)
+ * The round-trip property (`validate(JSON.parse(content))`)
  * is enforced both at runtime and in the spec.
  */
 
 import type { DocumentationModel } from '@abapdoc/model';
-import { DocumentationModelSchema } from '@abapdoc/model';
+import { validate } from '@abapdoc/model';
 import { registerRenderer } from '@abapdoc/renderer-registry';
 
 /** Output filename for the JSON dump. */
@@ -35,23 +35,24 @@ export interface RenderResult {
 /**
  * Render a {@link DocumentationModel} to a single `model.json` file.
  *
- * @param model - the model to render. Validated with
- *   {@link DocumentationModelSchema} before stringification.
+ * @param model - the model to render. Validated with {@link validate}
+ *   before stringification.
  * @param _options - reserved for future use; ignored at v0.
- * @throws if `model` does not satisfy {@link DocumentationModelSchema}.
+ * @throws if `model` does not satisfy the model schema.
  */
 export function render(
   model: DocumentationModel,
   _options?: RenderOptions
 ): RenderResult {
   // Cheap insurance — the CLI may pass a model straight off disk.
-  DocumentationModelSchema.parse(model);
+  // `validate` also migrates older model versions before parsing.
+  const validated = validate(model);
 
   return {
     files: [
       {
         path: MODEL_JSON_PATH,
-        content: JSON.stringify(model, null, 2),
+        content: JSON.stringify(validated, null, 2),
       },
     ],
   };

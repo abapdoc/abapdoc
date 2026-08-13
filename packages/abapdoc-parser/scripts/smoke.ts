@@ -6,7 +6,7 @@
  *   2. wrap the result in a minimal DocumentationModel and validate it
  *   3. run the JSON / HTML / MDX renderers, print file lists
  *   4. round-trip the JSON renderer's output back through
- *      DocumentationModelSchema.parse and report success/failure.
+ *      validate() and report success/failure.
  *
  * Run via: `NODE_OPTIONS="--conditions=development" npx tsx packages/abapdoc-parser/scripts/smoke.ts`
  * (the workspace packages resolve source via the `development`
@@ -23,11 +23,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { parseAbapSource } from '../src/index.js';
-import {
-  DocumentationModelSchema,
-  validate,
-  DOCUMENTATION_MODEL_VERSION,
-} from '@abapdoc/model';
+import { validate, DOCUMENTATION_MODEL_VERSION } from '@abapdoc/model';
 
 import { render as renderJson } from '@abapdoc/renderer-json';
 import { render as renderHtml } from '@abapdoc/renderer-html';
@@ -46,12 +42,11 @@ const ABAP_FILE = resolve(
   'petstore',
   'src',
   'sdk',
-  'zcl_pet_service.clas.abap',
+  'zcl_pet_service.clas.abap'
 );
 // A relative source path so the DocumentationModel's sourceLocation
 // stays useful when the model is later serialised.
-const RELATIVE_ABAP_PATH =
-  'e2e/petstore/src/sdk/zcl_pet_service.clas.abap';
+const RELATIVE_ABAP_PATH = 'e2e/petstore/src/sdk/zcl_pet_service.clas.abap';
 
 let hasFatal = false;
 let hasNonFatalIssue = false;
@@ -95,7 +90,7 @@ function shortZodIssues(issues: ReadonlyArray<unknown>): string {
 
 function tryValidate(
   label: string,
-  candidate: unknown,
+  candidate: unknown
 ): { ok: true; data: ReturnType<typeof validate> } | { ok: false } {
   try {
     const data = validate(candidate);
@@ -109,10 +104,13 @@ function tryValidate(
     ) {
       reportIssue(
         `${label} model validation`,
-        `\n${shortZodIssues((err as { issues: unknown[] }).issues)}`,
+        `\n${shortZodIssues((err as { issues: unknown[] }).issues)}`
       );
     } else {
-      reportIssue(`${label} model validation`, err instanceof Error ? err.message : String(err));
+      reportIssue(
+        `${label} model validation`,
+        err instanceof Error ? err.message : String(err)
+      );
     }
     return { ok: false };
   }
@@ -120,8 +118,10 @@ function tryValidate(
 
 function tryRenderer(
   label: string,
-  fn: () => { files: Array<{ path: string; content: string }> },
-): { ok: true; files: Array<{ path: string; content: string }> } | { ok: false; files: [] } {
+  fn: () => { files: Array<{ path: string; content: string }> }
+):
+  | { ok: true; files: Array<{ path: string; content: string }> }
+  | { ok: false; files: [] } {
   try {
     return { ok: true, files: fn().files };
   } catch (err) {
@@ -133,10 +133,13 @@ function tryRenderer(
     ) {
       reportIssue(
         `${label} render`,
-        `\n${shortZodIssues((err as { issues: unknown[] }).issues)}`,
+        `\n${shortZodIssues((err as { issues: unknown[] }).issues)}`
       );
     } else {
-      reportIssue(`${label} render`, err instanceof Error ? err.message : String(err));
+      reportIssue(
+        `${label} render`,
+        err instanceof Error ? err.message : String(err)
+      );
     }
     return { ok: false, files: [] };
   }
@@ -157,14 +160,18 @@ function main(): void {
   // eslint-disable-next-line no-console
   console.log(`name: ${obj.name}`);
   // eslint-disable-next-line no-console
-  console.log(`sourceLocation.file: ${JSON.stringify(obj.sourceLocation.file)}`);
+  console.log(
+    `sourceLocation.file: ${JSON.stringify(obj.sourceLocation.file)}`
+  );
   if (obj.kind === 'class') {
     // eslint-disable-next-line no-console
     console.log(`visibility: ${obj.visibility}`);
     // eslint-disable-next-line no-console
     console.log(`interfaces: ${JSON.stringify(obj.interfaces ?? [])}`);
     // eslint-disable-next-line no-console
-    console.log(`class-level doc: ${obj.doc !== undefined ? 'present' : 'absent'}`);
+    console.log(
+      `class-level doc: ${obj.doc !== undefined ? 'present' : 'absent'}`
+    );
     // eslint-disable-next-line no-console
     console.log(`methods: ${(obj.methods ?? []).length}`);
     let methodIndex = 0;
@@ -176,7 +183,7 @@ function main(): void {
           ` params=${m.parameters.length}` +
           ` returning=${m.returning ? 'yes' : 'no'}` +
           ` exceptions=${m.exceptions.length}` +
-          ` doc=${m.doc !== undefined ? 'yes' : 'no'}`,
+          ` doc=${m.doc !== undefined ? 'yes' : 'no'}`
       );
       methodIndex++;
     }
@@ -201,7 +208,9 @@ function main(): void {
     validated = validation.data;
   } else {
     // eslint-disable-next-line no-console
-    console.log('model validation: FAILED — renderers below will see the same failure');
+    console.log(
+      'model validation: FAILED — renderers below will see the same failure'
+    );
     // Use the parser-emitted object directly so we still observe how the
     // renderers behave against an unvalidated model (each renderer
     // re-parses with DocumentationModelSchema, so they should fail
@@ -226,7 +235,7 @@ function main(): void {
 
   section('5. Render via renderer-html');
   const htmlOut = tryRenderer('renderer-html', () =>
-    renderHtml(validated, { title: 'ABAP Petstore' }),
+    renderHtml(validated, { title: 'ABAP Petstore' })
   );
   if (htmlOut.ok) {
     // eslint-disable-next-line no-console
@@ -239,7 +248,7 @@ function main(): void {
 
   section('6. Render via renderer-mdx');
   const mdxOut = tryRenderer('renderer-mdx', () =>
-    renderMdx(validated, { title: 'ABAP Petstore' }),
+    renderMdx(validated, { title: 'ABAP Petstore' })
   );
   if (mdxOut.ok) {
     // eslint-disable-next-line no-console
@@ -250,18 +259,19 @@ function main(): void {
     }
   }
 
-  section('7. JSON round-trip via DocumentationModelSchema.parse');
+  section('7. JSON round-trip via validate');
   if (jsonOut.ok && jsonOut.files[0] !== undefined) {
     try {
-      const reparsed = DocumentationModelSchema.parse(
-        JSON.parse(jsonOut.files[0].content),
-      );
+      const reparsed = validate(JSON.parse(jsonOut.files[0].content));
       // eslint-disable-next-line no-console
       console.log(
-        `round-trip: ok (${reparsed.objects.length} object(s) preserved)`,
+        `round-trip: ok (${reparsed.objects.length} object(s) preserved)`
       );
     } catch (err) {
-      reportIssue('json-round-trip', err instanceof Error ? err.message : String(err));
+      reportIssue(
+        'json-round-trip',
+        err instanceof Error ? err.message : String(err)
+      );
     }
   } else {
     // eslint-disable-next-line no-console
@@ -274,9 +284,9 @@ function main(): void {
   //     found in the IMPLEMENTATION block (it leaves the field empty
   //     because stampMethodFile only walks through doc / parameters /
   //     returning).
-  //   - that empty file string then trips DocumentationModelSchema.parse,
-  //     which blocks both validate() and the renderers (each renderer
-  //     re-parses the model as a cheap insurance check).
+  //   - that empty file string then trips validate(),
+  //     which blocks the renderers (each renderer re-validates the model
+  //     as a cheap insurance check).
   //
   // Fields the parser emits but renderers don't currently consume
   // (informational; not a bug, just a completeness map for the CLI):
@@ -309,7 +319,9 @@ function main(): void {
   if (patchedValidation.ok) {
     // eslint-disable-next-line no-console
     console.log('patched model validates: ok');
-    const pj = tryRenderer('renderer-json (patched)', () => renderJson(patchedValidation.data));
+    const pj = tryRenderer('renderer-json (patched)', () =>
+      renderJson(patchedValidation.data)
+    );
     if (pj.ok) {
       // eslint-disable-next-line no-console
       console.log(`renderer-json files: ${pj.files.length}`);
@@ -319,7 +331,7 @@ function main(): void {
       }
     }
     const ph = tryRenderer('renderer-html (patched)', () =>
-      renderHtml(patchedValidation.data, { title: 'ABAP Petstore' }),
+      renderHtml(patchedValidation.data, { title: 'ABAP Petstore' })
     );
     if (ph.ok) {
       // eslint-disable-next-line no-console
@@ -330,7 +342,7 @@ function main(): void {
       }
     }
     const pm = tryRenderer('renderer-mdx (patched)', () =>
-      renderMdx(patchedValidation.data, { title: 'ABAP Petstore' }),
+      renderMdx(patchedValidation.data, { title: 'ABAP Petstore' })
     );
     if (pm.ok) {
       // eslint-disable-next-line no-console
@@ -342,21 +354,29 @@ function main(): void {
     }
     if (pj.ok && pj.files[0] !== undefined) {
       try {
-        const reparsed = DocumentationModelSchema.parse(JSON.parse(pj.files[0].content));
+        const reparsed = validate(JSON.parse(pj.files[0].content));
         // eslint-disable-next-line no-console
         console.log(
-          `patched round-trip: ok (${reparsed.objects.length} object(s) preserved, ${(reparsed.objects[0]?.kind === 'class' ? (reparsed.objects[0].methods ?? []).length : 0)} method(s))`,
+          `patched round-trip: ok (${
+            reparsed.objects.length
+          } object(s) preserved, ${
+            reparsed.objects[0]?.kind === 'class'
+              ? (reparsed.objects[0].methods ?? []).length
+              : 0
+          } method(s))`
         );
       } catch (err) {
         reportIssue(
           'patched json-round-trip',
-          err instanceof Error ? err.message : String(err),
+          err instanceof Error ? err.message : String(err)
         );
       }
     }
   }
 
-  section('7b. Sanity check: render a hand-built valid model (parser-independent)');
+  section(
+    '7b. Sanity check: render a hand-built valid model (parser-independent)'
+  );
   // Same idea: confirm the renderer pipeline itself is healthy with a
   // hand-rolled model that has no parser involvement at all.
   const handBuilt = {
@@ -393,7 +413,9 @@ function main(): void {
   if (hbValidate.ok) {
     // eslint-disable-next-line no-console
     console.log('hand-built model validates: ok');
-    const j = tryRenderer('renderer-json (hand-built)', () => renderJson(hbValidate.data));
+    const j = tryRenderer('renderer-json (hand-built)', () =>
+      renderJson(hbValidate.data)
+    );
     if (j.ok) {
       // eslint-disable-next-line no-console
       console.log(`renderer-json files: ${j.files.length}`);
@@ -403,7 +425,7 @@ function main(): void {
       }
     }
     const h = tryRenderer('renderer-html (hand-built)', () =>
-      renderHtml(hbValidate.data, { title: 'ABAP Petstore' }),
+      renderHtml(hbValidate.data, { title: 'ABAP Petstore' })
     );
     if (h.ok) {
       // eslint-disable-next-line no-console
@@ -414,7 +436,7 @@ function main(): void {
       }
     }
     const m = tryRenderer('renderer-mdx (hand-built)', () =>
-      renderMdx(hbValidate.data, { title: 'ABAP Petstore' }),
+      renderMdx(hbValidate.data, { title: 'ABAP Petstore' })
     );
     if (m.ok) {
       // eslint-disable-next-line no-console
@@ -425,13 +447,18 @@ function main(): void {
       }
     }
   } else {
-    reportIssue('hand-built', 'a hand-rolled minimal model failed validation (renderer-side bug?)');
+    reportIssue(
+      'hand-built',
+      'a hand-rolled minimal model failed validation (renderer-side bug?)'
+    );
   }
 
   section('done');
   if (hasFatal) {
     // eslint-disable-next-line no-console
-    console.error(`non-zero: hasFatal=${hasFatal} hasNonFatalIssue=${hasNonFatalIssue}`);
+    console.error(
+      `non-zero: hasFatal=${hasFatal} hasNonFatalIssue=${hasNonFatalIssue}`
+    );
     process.exitCode = 1;
   } else if (hasNonFatalIssue) {
     // eslint-disable-next-line no-console

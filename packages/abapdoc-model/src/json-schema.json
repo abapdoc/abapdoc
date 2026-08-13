@@ -6,7 +6,7 @@
       "properties": {
         "version": {
           "type": "string",
-          "const": "1.0.0"
+          "const": "1.1.0"
         },
         "source": {
           "type": "object",
@@ -27,10 +27,7 @@
               "format": "date-time"
             }
           },
-          "required": [
-            "provider",
-            "rootDir"
-          ],
+          "required": ["provider", "rootDir"],
           "additionalProperties": false
         },
         "objects": {
@@ -50,12 +47,7 @@
                   },
                   "visibility": {
                     "type": "string",
-                    "enum": [
-                      "public",
-                      "protected",
-                      "private",
-                      "package"
-                    ]
+                    "enum": ["public", "protected", "private", "package"]
                   },
                   "superclass": {
                     "type": "string"
@@ -106,10 +98,7 @@
                               }
                             }
                           },
-                          "required": [
-                            "kind",
-                            "name"
-                          ],
+                          "required": ["kind", "name"],
                           "additionalProperties": false
                         },
                         "doc": {
@@ -141,11 +130,7 @@
                                         "type": "string"
                                       }
                                     },
-                                    "required": [
-                                      "kind",
-                                      "name",
-                                      "description"
-                                    ],
+                                    "required": ["kind", "name", "description"],
                                     "additionalProperties": false
                                   },
                                   {
@@ -159,10 +144,7 @@
                                         "type": "string"
                                       }
                                     },
-                                    "required": [
-                                      "kind",
-                                      "description"
-                                    ],
+                                    "required": ["kind", "description"],
                                     "additionalProperties": false
                                   },
                                   {
@@ -180,10 +162,7 @@
                                         "type": "string"
                                       }
                                     },
-                                    "required": [
-                                      "kind",
-                                      "name"
-                                    ],
+                                    "required": ["kind", "name"],
                                     "additionalProperties": false
                                   },
                                   {
@@ -198,10 +177,7 @@
                                         "minLength": 1
                                       }
                                     },
-                                    "required": [
-                                      "kind",
-                                      "target"
-                                    ],
+                                    "required": ["kind", "target"],
                                     "additionalProperties": false
                                   },
                                   {
@@ -219,11 +195,7 @@
                                         "type": "string"
                                       }
                                     },
-                                    "required": [
-                                      "kind",
-                                      "name",
-                                      "body"
-                                    ],
+                                    "required": ["kind", "name", "body"],
                                     "additionalProperties": false
                                   }
                                 ]
@@ -245,26 +217,15 @@
                                   "exclusiveMinimum": 0
                                 }
                               },
-                              "required": [
-                                "file",
-                                "startLine",
-                                "endLine"
-                              ],
+                              "required": ["file", "startLine", "endLine"],
                               "additionalProperties": false
                             }
                           },
-                          "required": [
-                            "summary",
-                            "tags",
-                            "sourceLocation"
-                          ],
+                          "required": ["summary", "tags", "sourceLocation"],
                           "additionalProperties": false
                         }
                       },
-                      "required": [
-                        "name",
-                        "type"
-                      ],
+                      "required": ["name", "type"],
                       "additionalProperties": false
                     }
                   },
@@ -306,11 +267,7 @@
                                 "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc"
                               }
                             },
-                            "required": [
-                              "name",
-                              "direction",
-                              "type"
-                            ],
+                            "required": ["name", "direction", "type"],
                             "additionalProperties": false
                           }
                         },
@@ -330,19 +287,13 @@
                                 "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc/properties/sourceLocation"
                               }
                             },
-                            "required": [
-                              "name"
-                            ],
+                            "required": ["name"],
                             "additionalProperties": false
                           }
                         },
                         "visibility": {
                           "type": "string",
-                          "enum": [
-                            "public",
-                            "protected",
-                            "private"
-                          ]
+                          "enum": ["public", "protected", "private"]
                         },
                         "isInterfaceMethod": {
                           "type": "boolean"
@@ -393,12 +344,14 @@
                           "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc"
                         }
                       },
-                      "required": [
-                        "name",
-                        "visibility",
-                        "type"
-                      ],
+                      "required": ["name", "visibility", "type"],
                       "additionalProperties": false
+                    }
+                  },
+                  "localClasses": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0"
                     }
                   },
                   "doc": {
@@ -408,12 +361,7 @@
                     "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc/properties/sourceLocation"
                   }
                 },
-                "required": [
-                  "kind",
-                  "name",
-                  "visibility",
-                  "sourceLocation"
-                ],
+                "required": ["kind", "name", "visibility", "sourceLocation"],
                 "additionalProperties": false
               },
               {
@@ -446,11 +394,7 @@
                     "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc/properties/sourceLocation"
                   }
                 },
-                "required": [
-                  "kind",
-                  "name",
-                  "sourceLocation"
-                ],
+                "required": ["kind", "name", "sourceLocation"],
                 "additionalProperties": false
               },
               {
@@ -520,12 +464,7 @@
                     "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc/properties/sourceLocation"
                   }
                 },
-                "required": [
-                  "kind",
-                  "name",
-                  "programType",
-                  "sourceLocation"
-                ],
+                "required": ["kind", "name", "programType", "sourceLocation"],
                 "additionalProperties": false
               },
               {
@@ -552,12 +491,7 @@
                     "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc/properties/sourceLocation"
                   }
                 },
-                "required": [
-                  "kind",
-                  "name",
-                  "fields",
-                  "sourceLocation"
-                ],
+                "required": ["kind", "name", "fields", "sourceLocation"],
                 "additionalProperties": false
               },
               {
@@ -584,23 +518,14 @@
                     "$ref": "#/definitions/DocumentationModel/properties/objects/items/anyOf/0/properties/types/items/properties/doc/properties/sourceLocation"
                   }
                 },
-                "required": [
-                  "kind",
-                  "name",
-                  "fields",
-                  "sourceLocation"
-                ],
+                "required": ["kind", "name", "fields", "sourceLocation"],
                 "additionalProperties": false
               }
             ]
           }
         }
       },
-      "required": [
-        "version",
-        "source",
-        "objects"
-      ],
+      "required": ["version", "source", "objects"],
       "additionalProperties": false
     }
   },

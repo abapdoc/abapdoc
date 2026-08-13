@@ -272,7 +272,12 @@ describe('@abapdoc/renderer-html', () => {
       expect(doc.querySelector('h1')?.textContent).toBe('CLI Reference');
       expect(cli.content).toContain('abapdoc build');
       expect(cli.content).toContain('abapdoc validate');
-      const expectedFormats = [...listRenderers().map((r) => r.format).sort(), 'all'].join(', ');
+      const expectedFormats = [
+        ...listRenderers()
+          .map((r) => r.format)
+          .sort(),
+        'all',
+      ].join(', ');
       expect(cli.content).toContain(expectedFormats);
     });
 
@@ -292,7 +297,8 @@ describe('@abapdoc/renderer-html', () => {
       expect(examples.querySelector('.sidebar')).not.toBeNull();
 
       const classPage = parseHtml(
-        fileByName(files, `objects/${objectSlug('zcl_pet_service')}.html`).content
+        fileByName(files, `objects/${objectSlug('zcl_pet_service')}.html`)
+          .content
       );
       expect(classPage.querySelector('.sidebar')).not.toBeNull();
     });
@@ -313,8 +319,8 @@ describe('@abapdoc/renderer-html', () => {
       const findPage = (name: string) =>
         fileByName(files, `objects/${objectSlug(name)}.html`);
       const samples: Record<string, string[]> = {
-        zcl_pet_service: ['methods'],
-        zif_pet_service: ['methods'],
+        zcl_pet_service: ['methods', 'get-pet', 'save-pet'],
+        zif_pet_service: ['methods', 'get-pet'],
         z_fm_create_pet: ['parameters'],
         zpet_t: ['fields'],
       };

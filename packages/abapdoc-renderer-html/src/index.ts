@@ -37,7 +37,7 @@ import type {
   Tag,
   TypeRef,
 } from '@abapdoc/model';
-import { DocumentationModelSchema } from '@abapdoc/model';
+import { validate } from '@abapdoc/model';
 import { listRenderers, registerRenderer } from '@abapdoc/renderer-registry';
 
 // ---------------------------------------------------------------------------
@@ -60,23 +60,23 @@ export interface RenderResult {
 /**
  * Render a {@link DocumentationModel} to HTML pages.
  *
- * @param model - the model to render. Validated with
- *   {@link DocumentationModelSchema} first.
+ * @param model - the model to render. Validated with {@link validate} first.
  * @param options - see {@link RenderOptions}.
- * @throws if `model` does not satisfy {@link DocumentationModelSchema}.
+ * @throws if `model` does not satisfy the model schema.
  */
 export function render(
   model: DocumentationModel,
   options: RenderOptions = {}
 ): RenderResult {
   // Cheap insurance at the model boundary.
-  DocumentationModelSchema.parse(model);
+  // `validate` also migrates older model versions before parsing.
+  const validated = validate(model);
 
   const title = options.title ?? 'ABAP Documentation';
   const files: RenderResult['files'] = [];
 
   // Per-object pages.
-  for (const obj of model.objects) {
+  for (const obj of validated.objects) {
     files.push({
       path: `${objectPagePath(obj)}.html`,
       content: renderObjectPage(obj, title),
@@ -86,7 +86,7 @@ export function render(
   // Landing page.
   files.push({
     path: 'index.html',
-    content: renderIndexPage(model.objects, title),
+    content: renderIndexPage(validated.objects, title),
   });
 
   return { files };
@@ -287,8 +287,16 @@ function renderClassBody(cls: Class): string {
 
   const methods = cls.methods ?? [];
   if (methods.length > 0) {
-    parts.push(`<h2>Methods</h2>`);
-    parts.push(...methods.map(renderMethodSection));
+    const localClassIds = new Set(
+      (cls.localClasses ?? []).map((c) => `local-class-${objectSlug(c.name)}`)
+    );
+    const methodIds = buildMethodIds(methods, localClassIds);
+    parts.push(`<h2 id="methods">Methods</h2>`);
+    parts.push(
+      ...methods.map((m, i) =>
+        renderMethodSection(m, getMethodId(methodIds, i))
+      )
+    );
   }
 
   if ((cls.types ?? []).length > 0) {
@@ -329,6 +337,18 @@ function renderClassBody(cls: Class): string {
     );
   }
 
+  if ((cls.localClasses ?? []).length > 0) {
+    parts.push(`<h2 id="local-classes">Local classes</h2>`);
+    for (const c of cls.localClasses ?? []) {
+      parts.push(
+        `<h3 id="local-class-${escapeHtml(
+          objectSlug(c.name)
+        )}"><code>${escapeHtml(c.name)}</code></h3>`
+      );
+      if (c.doc !== undefined) parts.push(renderDocBlock(c.doc));
+    }
+  }
+
   return parts.join('\n');
 }
 
@@ -337,8 +357,13 @@ function renderInterfaceBody(iface: Interface): string {
   parts.push(renderDocBlock(iface.doc));
   const methods = iface.methods ?? [];
   if (methods.length > 0) {
-    parts.push(`<h2>Methods</h2>`);
-    parts.push(...methods.map(renderMethodSection));
+    const methodIds = buildMethodIds(methods);
+    parts.push(`<h2 id="methods">Methods</h2>`);
+    parts.push(
+      ...methods.map((m, i) =>
+        renderMethodSection(m, getMethodId(methodIds, i))
+      )
+    );
   }
   return parts.join('\n');
 }
@@ -423,10 +448,49 @@ function methodHeadingId(name: string): string {
   return safeId(name, 'method');
 }
 
-function renderMethodSection(method: Method): string {
+function buildMethodIds(
+  methods: readonly Method[],
+  extraReserved?: ReadonlySet<string>
+): readonly string[] {
+  const reservedIds = new Set([
+    'methods',
+    'local-classes',
+    'types',
+    'attributes',
+    'parameters',
+    'exceptions',
+    'fields',
+  ]);
+  if (extraReserved !== undefined) {
+    for (const id of extraReserved) reservedIds.add(id);
+  }
+  const used = new Set<string>(reservedIds);
+  const ids: string[] = [];
+  for (const m of methods) {
+    const base = methodHeadingId(m.name);
+    let id = base;
+    let suffix = 2;
+    while (used.has(id)) {
+      id = `${base}-${suffix}`;
+      suffix++;
+    }
+    used.add(id);
+    ids.push(id);
+  }
+  return ids;
+}
+
+function getMethodId(methodIds: readonly string[], index: number): string {
+  const id = methodIds.at(index);
+  if (id === undefined) {
+    throw new Error(`Missing method id at index ${index}`);
+  }
+  return id;
+}
+
+function renderMethodSection(method: Method, headingId: string): string {
   const badge = `<span class="badge">${escapeHtml(method.visibility)}</span>`;
-  const headingId = escapeHtml(methodHeadingId(method.name));
-  const heading = `<h3 id="${headingId}"><code>${escapeHtml(
+  const heading = `<h3 id="${escapeHtml(headingId)}"><code>${escapeHtml(
     method.name
   )}</code> ${badge}</h3>`;
 
@@ -733,6 +797,7 @@ main h3 { font-size: 1.1rem; margin-top: 1.6rem; }
   overflow-y: auto; padding: 1rem; border-left: 1px solid var(--border); font-size: .88rem;
 }
 .outline ul { list-style: none; padding-left: 0; margin: 0; }
+.outline ul ul { padding-left: 1rem; }
 .outline li { margin: .25rem 0; }
 .outline a { color: var(--muted); display: block; padding: .15rem 0; }
 .outline a[aria-current="true"], .outline a:hover { color: var(--accent); }
@@ -1091,17 +1156,53 @@ function renderSiteObjectBody(obj: AbapObject): string {
   return addBodyHeadingIds(body);
 }
 
+function renderMethodOutlineItems(
+  methods: readonly Method[],
+  extraReserved?: ReadonlySet<string>
+): string {
+  const methodIds = buildMethodIds(methods, extraReserved);
+  const methodItems = methods
+    .map(
+      (m, i) =>
+        `<li><a href="#${getMethodId(methodIds, i)}">${escapeHtml(
+          m.name
+        )}</a></li>`
+    )
+    .join('');
+  return `<li><a href="#methods">Methods</a><ul>${methodItems}</ul></li>`;
+}
+
+function renderLocalClassOutlineItems(classes: readonly Class[]): string {
+  const localItems = classes
+    .map(
+      (c) =>
+        `<li><a href="#local-class-${escapeHtml(
+          objectSlug(c.name)
+        )}">${escapeHtml(c.name)}</a></li>`
+    )
+    .join('');
+  return `<li><a href="#local-classes">Local classes</a><ul>${localItems}</ul></li>`;
+}
+
 function buildObjectOutline(obj: AbapObject): string {
   const items: string[] = [];
   if (obj.kind === 'class') {
     if (obj.types?.length) items.push('<li><a href="#types">Types</a></li>');
     if (obj.attributes?.length)
       items.push('<li><a href="#attributes">Attributes</a></li>');
-    if (obj.methods?.length)
-      items.push('<li><a href="#methods">Methods</a></li>');
+    if (obj.methods?.length) {
+      const localClassIds = new Set(
+        (obj.localClasses ?? []).map((c) => `local-class-${objectSlug(c.name)}`)
+      );
+      items.push(renderMethodOutlineItems(obj.methods, localClassIds));
+    }
+    if (obj.localClasses?.length) {
+      items.push(renderLocalClassOutlineItems(obj.localClasses));
+    }
   } else if (obj.kind === 'interface') {
-    if (obj.methods?.length)
-      items.push('<li><a href="#methods">Methods</a></li>');
+    if (obj.methods?.length) {
+      items.push(renderMethodOutlineItems(obj.methods));
+    }
   } else if (obj.kind === 'function-module') {
     items.push('<li><a href="#parameters">Parameters</a></li>');
     if (obj.exceptions.length)
@@ -1355,9 +1456,10 @@ export function renderSite(
   model: DocumentationModel,
   options: RenderOptions = {}
 ): RenderResult {
-  DocumentationModelSchema.parse(model);
+  // `validate` also migrates older model versions before parsing.
+  const validated = validate(model);
   const title = options.title ?? 'abapdoc';
-  const tree = buildPackageTree(model.objects);
+  const tree = buildPackageTree(validated.objects);
   const OBJECT_PREFIX = 'objects/';
   const navFor = (opts: {
     currentPage: string;
@@ -1421,7 +1523,7 @@ export function renderSite(
   files.push({
     path: 'examples.html',
     content: renderExamplesPage(
-      model,
+      validated,
       title,
       navFor({
         currentPage: 'examples',
@@ -1431,7 +1533,7 @@ export function renderSite(
     ),
   });
 
-  for (const obj of model.objects) {
+  for (const obj of validated.objects) {
     const objectPath = `${objectPagePath(obj)}.html`;
     files.push({
       path: `${OBJECT_PREFIX}${objectPath}`,

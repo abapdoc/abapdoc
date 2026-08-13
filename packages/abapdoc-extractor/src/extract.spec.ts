@@ -4,7 +4,7 @@ import { extract } from './index.js';
 describe('extract — file-based', () => {
   it('extracts the petstore sample end-to-end', async () => {
     const result = await extract({ rootDir: 'e2e/petstore' });
-    expect(result.model.version).toBe('1.0.0');
+    expect(result.model.version).toBe('1.1.0');
     expect(result.model.source.provider).toBe('file');
     for (const o of result.model.objects) {
       // eslint-disable-next-line no-console
@@ -17,9 +17,9 @@ describe('extract — file-based', () => {
     expect(kinds).toContain('function-module');
   }, 30_000);
 
-  it('returns an empty model for an empty directory', async () => {
-    // Use a tmpdir-like location that does not exist.
-    await expect(extract({ rootDir: '/tmp/abapdoc-nonexistent-' + Date.now() }))
-      .rejects.toThrow();
+  it('rejects for a non-existent directory', async () => {
+    await expect(
+      extract({ rootDir: '/tmp/abapdoc-nonexistent-' + Date.now() })
+    ).rejects.toThrow();
   });
 });

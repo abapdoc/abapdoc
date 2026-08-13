@@ -41,7 +41,7 @@ describe('CLI — integration', () => {
         'utf8'
       );
       const model = JSON.parse(modelRaw);
-      expect(model.version).toBe('1.0.0');
+      expect(model.version).toBe('1.1.0');
       expect(model.objects.length).toBeGreaterThanOrEqual(3);
     } finally {
       await rm(tmp, { recursive: true, force: true });

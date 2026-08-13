@@ -3,7 +3,7 @@ import { basename, join, posix, relative, sep } from 'node:path';
 import { XMLParser } from 'fast-xml-parser';
 import type { AbapObject, DocBlock } from '@abapdoc/model';
 import {
-  DocumentationModelSchema,
+  validate,
   DOCUMENTATION_MODEL_VERSION,
   type DocumentationModel,
 } from '@abapdoc/model';
@@ -320,7 +320,7 @@ export async function extract(opts: {
     objects,
   };
   // Validate before returning so the caller gets a clean model or a clear error.
-  const validated = DocumentationModelSchema.parse(model) as DocumentationModel;
+  const validated = validate(model);
   return { model: validated, warnings };
 }
 
