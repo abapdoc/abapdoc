@@ -1,7 +1,10 @@
 import { z } from 'zod';
-import { DocBlockSchema } from './doc-block.js';
-import { MethodSchema } from './method.js';
-import { SourceLocationSchema } from './source-location.js';
+import { DocBlockSchema, type DocBlock } from './doc-block.js';
+import { MethodSchema, type Method } from './method.js';
+import {
+  SourceLocationSchema,
+  type SourceLocation,
+} from './source-location.js';
 import { TypeRefSchema } from './type-ref.js';
 
 /**
@@ -10,7 +13,12 @@ import { TypeRefSchema } from './type-ref.js';
  * Light-weight shape: enough for cross-referencing in docs without
  * committing the model to a full ABAP type system.
  */
-export const VisibilitySchema = z.enum(['public', 'protected', 'private', 'package']);
+export const VisibilitySchema = z.enum([
+  'public',
+  'protected',
+  'private',
+  'package',
+]);
 
 export type Visibility = z.infer<typeof VisibilitySchema>;
 
@@ -36,6 +44,20 @@ export const AttributeSchema = z.object({
 
 export type Attribute = z.infer<typeof AttributeSchema>;
 
+export interface Class {
+  kind: 'class';
+  name: string;
+  visibility: Visibility;
+  superclass?: string;
+  interfaces?: string[];
+  types?: TypeDecl[];
+  methods?: Method[];
+  attributes?: Attribute[];
+  localClasses?: Class[];
+  doc?: DocBlock;
+  sourceLocation: SourceLocation;
+}
+
 /**
  * ABAP class definition.
  *
@@ -43,7 +65,7 @@ export type Attribute = z.infer<typeof AttributeSchema>;
  * not currently resolve them to other `AbapObject` instances (see
  * ARCHITECTURE.md → "Out of scope for v0").
  */
-export const ClassSchema = z.object({
+export const ClassSchema: z.ZodObject<any, any, any, Class> = z.object({
   kind: z.literal('class'),
   name: z.string().min(1),
   visibility: VisibilitySchema,
@@ -52,8 +74,7 @@ export const ClassSchema = z.object({
   types: z.array(TypeDeclSchema).optional(),
   methods: z.array(MethodSchema).optional(),
   attributes: z.array(AttributeSchema).optional(),
+  localClasses: z.array(z.lazy(() => ClassSchema)).optional(),
   doc: DocBlockSchema.optional(),
   sourceLocation: SourceLocationSchema,
 });
-
-export type Class = z.infer<typeof ClassSchema>;

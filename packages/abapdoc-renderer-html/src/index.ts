@@ -329,6 +329,22 @@ function renderClassBody(cls: Class): string {
     );
   }
 
+  if ((cls.localClasses ?? []).length > 0) {
+    parts.push(`<h2 id="local-classes">Local classes</h2>`);
+    parts.push(
+      `<ul>` +
+        (cls.localClasses ?? [])
+          .map(
+            (c) =>
+              `<li id="${escapeHtml(objectSlug(c.name))}"><code>${escapeHtml(
+                c.name
+              )}</code></li>`
+          )
+          .join('') +
+        `</ul>`
+    );
+  }
+
   return parts.join('\n');
 }
 
@@ -733,6 +749,7 @@ main h3 { font-size: 1.1rem; margin-top: 1.6rem; }
   overflow-y: auto; padding: 1rem; border-left: 1px solid var(--border); font-size: .88rem;
 }
 .outline ul { list-style: none; padding-left: 0; margin: 0; }
+.outline ul ul { padding-left: 1rem; }
 .outline li { margin: .25rem 0; }
 .outline a { color: var(--muted); display: block; padding: .15rem 0; }
 .outline a[aria-current="true"], .outline a:hover { color: var(--accent); }
@@ -1097,11 +1114,46 @@ function buildObjectOutline(obj: AbapObject): string {
     if (obj.types?.length) items.push('<li><a href="#types">Types</a></li>');
     if (obj.attributes?.length)
       items.push('<li><a href="#attributes">Attributes</a></li>');
-    if (obj.methods?.length)
-      items.push('<li><a href="#methods">Methods</a></li>');
+    if (obj.methods?.length) {
+      const methodItems = obj.methods
+        .map(
+          (m) =>
+            `<li><a href="#${methodHeadingId(m.name)}">${escapeHtml(
+              m.name
+            )}</a></li>`
+        )
+        .join('');
+      items.push(
+        `<li><a href="#methods">Methods</a><ul>${methodItems}</ul></li>`
+      );
+    }
+    if (obj.localClasses?.length) {
+      const localItems = obj.localClasses
+        .map(
+          (c) =>
+            `<li><a href="#${escapeHtml(objectSlug(c.name))}">${escapeHtml(
+              c.name
+            )}</a></li>`
+        )
+        .join('');
+      items.push(
+        `<li><a href="#local-classes">Local classes</a><ul>${localItems}</ul></li>`
+      );
+    }
   } else if (obj.kind === 'interface') {
-    if (obj.methods?.length)
-      items.push('<li><a href="#methods">Methods</a></li>');
+    if (obj.methods?.length) {
+      const methodItems = obj.methods
+        .map(
+          (m) =>
+            `<li><a href="#${methodHeadingId(m.name)}">${escapeHtml(
+              m.name
+            )}</a></li>`
+        )
+        .join('');
+      items.push(
+        `<li><a href="#methods">Methods</a><ul>${methodItems}</ul></li>`
+      );
+    }
   } else if (obj.kind === 'function-module') {
     items.push('<li><a href="#parameters">Parameters</a></li>');
     if (obj.exceptions.length)
