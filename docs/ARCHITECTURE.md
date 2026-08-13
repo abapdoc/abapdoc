@@ -105,7 +105,7 @@ via the public API.
 
 ```ts
 DocumentationModel {
-  version: '1.0.0',
+  version: '1.1.0',
   source: SourceInfo,
   objects: AbapObject[]
 }
@@ -193,13 +193,13 @@ holds any subsequent prose. Tags are kept in source order.
 Discriminator key: `kind`. Values: `parameter`, `return`, `raising`, `see`,
 `custom`.
 
-| Kind        | Fields                                |
-| ----------- | ------------------------------------- |
-| `parameter` | `name`, `description`                 |
-| `return`    | `description`                         |
-| `raising`   | `name`, `description?`                |
-| `see`       | `target` (free-form: name, link, …)   |
-| `custom`    | `name`, `body` — escape hatch         |
+| Kind        | Fields                              |
+| ----------- | ----------------------------------- |
+| `parameter` | `name`, `description`               |
+| `return`    | `description`                       |
+| `raising`   | `name`, `description?`              |
+| `see`       | `target` (free-form: name, link, …) |
+| `custom`    | `name`, `body` — escape hatch       |
 
 The `custom` variant captures any ABAP Doc tag the parser does not recognise
 (`@since`, `@author`, `@deprecated`, vendor extensions, …) so models never

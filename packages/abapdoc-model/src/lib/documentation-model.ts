@@ -6,10 +6,12 @@ import { SourceInfoSchema } from './source-info.js';
  * Top-level model artefact shared by parser, renderers and consumers.
  *
  * `version` is a literal — any future migration must bump it and provide
- * a converter. `source` records provenance so downstream tooling can
- * decide whether a cached model is still valid.
+ * a converter. `validate()` converts older `1.0.0` documents to the current
+ * version so existing cached models stay readable. `source` records
+ * provenance so downstream tooling can decide whether a cached model is
+ * still valid.
  */
-export const DOCUMENTATION_MODEL_VERSION = '1.0.0' as const;
+export const DOCUMENTATION_MODEL_VERSION = '1.1.0' as const;
 
 export const DocumentationModelSchema = z.object({
   version: z.literal(DOCUMENTATION_MODEL_VERSION),

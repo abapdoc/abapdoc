@@ -10,7 +10,7 @@ import {
 
 function sampleModel(): DocumentationModel {
   return {
-    version: '1.0.0',
+    version: '1.1.0',
     source: {
       provider: 'test',
       rootDir: '/test',

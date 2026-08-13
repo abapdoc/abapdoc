@@ -12,7 +12,11 @@ import {
   type Table,
 } from '../index.js';
 
-const LOC = { file: 'src/petstore/zcl_pet_service.clas.abap', startLine: 1, endLine: 42 };
+const LOC = {
+  file: 'src/petstore/zcl_pet_service.clas.abap',
+  startLine: 1,
+  endLine: 42,
+};
 
 const sampleClass: Class = {
   kind: 'class',
@@ -23,9 +27,7 @@ const sampleClass: Class = {
   methods: [
     {
       name: 'get_pet',
-      parameters: [
-        { name: 'iv_pet_id', direction: 'importing', type: 'i' },
-      ],
+      parameters: [{ name: 'iv_pet_id', direction: 'importing', type: 'i' }],
       returning: { name: 'rs_pet', direction: 'returning', type: 'zs_pet' },
       exceptions: [{ name: 'cx_sy_itab_line_not_found' }],
       visibility: 'public',
@@ -35,7 +37,11 @@ const sampleClass: Class = {
         tags: [
           { kind: 'parameter', name: 'iv_pet_id', description: 'primary key' },
           { kind: 'return', description: 'the pet row' },
-          { kind: 'raising', name: 'cx_sy_itab_line_not_found', description: 'not found' },
+          {
+            kind: 'raising',
+            name: 'cx_sy_itab_line_not_found',
+            description: 'not found',
+          },
           { kind: 'see', target: 'zif_pet_service~get_pet' },
           { kind: 'custom', name: 'since', body: 'v1.2.0' },
         ],
@@ -81,10 +87,14 @@ const sampleTable: Table = {
   fields: [
     { kind: 'builtin', name: 'pet_id' },
     { kind: 'builtin', name: 'pet_name' },
-    { kind: 'ddic-structure', name: 'zs_admin', fields: [
-      { kind: 'builtin', name: 'created_by' },
-      { kind: 'builtin', name: 'created_at' },
-    ] },
+    {
+      kind: 'ddic-structure',
+      name: 'zs_admin',
+      fields: [
+        { kind: 'builtin', name: 'created_by' },
+        { kind: 'builtin', name: 'created_at' },
+      ],
+    },
   ],
   sourceLocation: { ...LOC, startLine: 1, endLine: 12 },
 };
@@ -109,7 +119,7 @@ const sampleProgram: Program = {
 describe('DocumentationModelSchema', () => {
   it('round-trips a sample containing one of every entity kind', () => {
     const sample: DocumentationModel = {
-      version: '1.0.0',
+      version: '1.1.0',
       source: { provider: 'file', rootDir: 'e2e/petstore' },
       objects: [
         sampleClass,
@@ -123,7 +133,7 @@ describe('DocumentationModelSchema', () => {
 
     const parsed = DocumentationModelSchema.parse(sample);
 
-    expect(parsed.version).toBe('1.0.0');
+    expect(parsed.version).toBe('1.1.0');
     expect(parsed.objects).toHaveLength(6);
 
     const kinds = parsed.objects.map((o: AbapObject) => o.kind);
@@ -139,14 +149,15 @@ describe('DocumentationModelSchema', () => {
 
   it('preserves DocBlock tags in source order including custom tags', () => {
     const parsed = DocumentationModelSchema.parse({
-      version: '1.0.0',
+      version: '1.1.0',
       source: { provider: 'file', rootDir: '.' },
       objects: [sampleClass],
     });
 
-    const tags = parsed.objects[0]!.kind === 'class'
-      ? parsed.objects[0].methods![0]!.doc!.tags
-      : [];
+    const tags =
+      parsed.objects[0]!.kind === 'class'
+        ? parsed.objects[0].methods![0]!.doc!.tags
+        : [];
 
     expect(tags.map((t) => t.kind)).toEqual([
       'parameter',
@@ -160,7 +171,7 @@ describe('DocumentationModelSchema', () => {
 
   it('recursively validates TypeRef fields', () => {
     const parsed = DocumentationModelSchema.parse({
-      version: '1.0.0',
+      version: '1.1.0',
       source: { provider: 'file', rootDir: '.' },
       objects: [sampleTable],
     });
