@@ -287,7 +287,10 @@ function renderClassBody(cls: Class): string {
 
   const methods = cls.methods ?? [];
   if (methods.length > 0) {
-    const methodIds = buildMethodIds(methods);
+    const localClassIds = new Set(
+      (cls.localClasses ?? []).map((c) => `local-class-${objectSlug(c.name)}`)
+    );
+    const methodIds = buildMethodIds(methods, localClassIds);
     parts.push(`<h2 id="methods">Methods</h2>`);
     parts.push(
       ...methods.map((m, i) =>
@@ -445,7 +448,10 @@ function methodHeadingId(name: string): string {
   return safeId(name, 'method');
 }
 
-function buildMethodIds(methods: readonly Method[]): readonly string[] {
+function buildMethodIds(
+  methods: readonly Method[],
+  extraReserved?: ReadonlySet<string>
+): readonly string[] {
   const reservedIds = new Set([
     'methods',
     'local-classes',
@@ -455,6 +461,9 @@ function buildMethodIds(methods: readonly Method[]): readonly string[] {
     'exceptions',
     'fields',
   ]);
+  if (extraReserved !== undefined) {
+    for (const id of extraReserved) reservedIds.add(id);
+  }
   const used = new Set<string>(reservedIds);
   const ids: string[] = [];
   for (const m of methods) {
@@ -1147,8 +1156,11 @@ function renderSiteObjectBody(obj: AbapObject): string {
   return addBodyHeadingIds(body);
 }
 
-function renderMethodOutlineItems(methods: readonly Method[]): string {
-  const methodIds = buildMethodIds(methods);
+function renderMethodOutlineItems(
+  methods: readonly Method[],
+  extraReserved?: ReadonlySet<string>
+): string {
+  const methodIds = buildMethodIds(methods, extraReserved);
   const methodItems = methods
     .map(
       (m, i) =>
@@ -1179,7 +1191,10 @@ function buildObjectOutline(obj: AbapObject): string {
     if (obj.attributes?.length)
       items.push('<li><a href="#attributes">Attributes</a></li>');
     if (obj.methods?.length) {
-      items.push(renderMethodOutlineItems(obj.methods));
+      const localClassIds = new Set(
+        (obj.localClasses ?? []).map((c) => `local-class-${objectSlug(c.name)}`)
+      );
+      items.push(renderMethodOutlineItems(obj.methods, localClassIds));
     }
     if (obj.localClasses?.length) {
       items.push(renderLocalClassOutlineItems(obj.localClasses));
