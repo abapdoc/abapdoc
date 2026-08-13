@@ -289,7 +289,9 @@ function renderClassBody(cls: Class): string {
   if (methods.length > 0) {
     const methodIds = buildMethodIds(methods);
     parts.push(`<h2 id="methods">Methods</h2>`);
-    parts.push(...methods.map((m, i) => renderMethodSection(m, methodIds[i])));
+    parts.push(
+      ...methods.map((m, i) => renderMethodSection(m, methodIds.at(i)!))
+    );
   }
 
   if ((cls.types ?? []).length > 0) {
@@ -352,7 +354,9 @@ function renderInterfaceBody(iface: Interface): string {
   if (methods.length > 0) {
     const methodIds = buildMethodIds(methods);
     parts.push(`<h2 id="methods">Methods</h2>`);
-    parts.push(...methods.map((m, i) => renderMethodSection(m, methodIds[i])));
+    parts.push(
+      ...methods.map((m, i) => renderMethodSection(m, methodIds.at(i)!))
+    );
   }
   return parts.join('\n');
 }
@@ -1135,7 +1139,8 @@ function renderMethodOutlineItems(methods: readonly Method[]): string {
   const methodIds = buildMethodIds(methods);
   const methodItems = methods
     .map(
-      (m, i) => `<li><a href="#${methodIds[i]}">${escapeHtml(m.name)}</a></li>`
+      (m, i) =>
+        `<li><a href="#${methodIds.at(i)!}">${escapeHtml(m.name)}</a></li>`
     )
     .join('');
   return `<li><a href="#methods">Methods</a><ul>${methodItems}</ul></li>`;
