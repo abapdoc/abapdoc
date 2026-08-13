@@ -35,7 +35,7 @@ import type {
   Tag,
   TypeRef,
 } from '@abapdoc/model';
-import { DocumentationModelSchema } from '@abapdoc/model';
+import { validate } from '@abapdoc/model';
 import { registerRenderer } from '@abapdoc/renderer-registry';
 
 // ---------------------------------------------------------------------------
@@ -58,20 +58,20 @@ export interface RenderResult {
 /**
  * Render a {@link DocumentationModel} to one MDX file per AbapObject.
  *
- * @param model - the model to render. Validated with
- *   {@link DocumentationModelSchema} first.
+ * @param model - the model to render. Validated with {@link validate} first.
  * @param _options - reserved for future use.
- * @throws if `model` does not satisfy {@link DocumentationModelSchema}.
+ * @throws if `model` does not satisfy the model schema.
  */
 export function render(
   model: DocumentationModel,
   _options: RenderOptions = {}
 ): RenderResult {
   // Cheap insurance at the model boundary.
-  DocumentationModelSchema.parse(model);
+  // `validate` also migrates older model versions before parsing.
+  const validated = validate(model);
 
   return {
-    files: model.objects.map((obj) => ({
+    files: validated.objects.map((obj) => ({
       path: `${kebabCase(obj.name)}.mdx`,
       content: renderObject(obj),
     })),

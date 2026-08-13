@@ -27,7 +27,7 @@ import {
 
 import { Command } from 'commander';
 import type { DocumentationModel } from '@abapdoc/model';
-import { DocumentationModelSchema } from '@abapdoc/model';
+import { validate } from '@abapdoc/model';
 
 import { extract } from '@abapdoc/extractor';
 import { getRenderer, listRenderers } from '@abapdoc/renderer-registry';
@@ -101,9 +101,7 @@ async function runBuild(
   const { model } = await extract({ rootDir: sourceRoot });
   // Validate the model end-to-end before rendering. Surface a clear
   // error if the upstream extractor emits something the schema rejects.
-  const reparsed = DocumentationModelSchema.parse(
-    JSON.parse(JSON.stringify(model))
-  );
+  const reparsed = validate(model);
   // `all` expands to whatever the registry currently knows about. New
   // formats register themselves; this loop picks them up automatically.
   const formats: readonly string[] =
@@ -208,7 +206,7 @@ function countObjects(model: DocumentationModel): {
 async function runValidate(src: string): Promise<number> {
   try {
     const { model } = await extract({ rootDir: resolve(src) });
-    DocumentationModelSchema.parse(model);
+    validate(model);
     console.log(`OK: extracted ${model.objects.length} object(s) from ${src}`);
     return 0;
   } catch (err) {

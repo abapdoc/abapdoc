@@ -17,8 +17,7 @@ describe('extract — file-based', () => {
     expect(kinds).toContain('function-module');
   }, 30_000);
 
-  it('returns an empty model for an empty directory', async () => {
-    // Use a tmpdir-like location that does not exist.
+  it('rejects for a non-existent directory', async () => {
     await expect(
       extract({ rootDir: '/tmp/abapdoc-nonexistent-' + Date.now() })
     ).rejects.toThrow();

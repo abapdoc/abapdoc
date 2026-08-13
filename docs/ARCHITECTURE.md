@@ -129,6 +129,7 @@ interfaces?: string[]
 types?: TypeDecl[]
 methods?: Method[]
 attributes?: Attribute[]
+localClasses?: Class[]
 doc?: DocBlock
 sourceLocation: SourceLocation
 ```
