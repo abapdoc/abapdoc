@@ -15,7 +15,7 @@
   "private": true,
   "dependencies": {
     "@nx/devkit": "^23.1.1",
-    "astro": "^7.4.1",
+    "astro": "~7.3.8",
     "commander": "^15.0.0",
     "fast-xml-parser": "^5.9.3",
     "tsdown": "^0.22.14",
